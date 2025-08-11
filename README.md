@@ -19,5 +19,5 @@ tar -xzf fix_s1_input.tar.gz
 **Fixture Creation**: These datasets were created using scripts in the [StarryNight repository](https://github.com/broadinstitute/starrynight/tree/main/starrynight/tests/fixtures/integration/utils) that extract representative subsets from full pooled Cell Painting experiments.
 
 **Related repositories:**
-- [nf-pooled-cellpainting-infra](../nf-pooled-cellpainting-infra) - AWS CDK infrastructure
+- [nf-pooled-cellpainting-infra](https://github.com/broadinstitute/nf-pooled-cellpainting-infra) - AWS CDK infrastructure
 - [nf-pooled-cellpainting](https://github.com/nf-core/nf-pooled-cellpainting) - Main nf-core pipeline

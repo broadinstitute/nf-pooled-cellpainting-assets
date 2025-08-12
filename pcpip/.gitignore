@@ -1,0 +1,12 @@
+# Ignore data directories to avoid committing large datasets
+data/*
+
+# Ignore plugins directory (cloned separately)
+plugins/
+
+# Docker
+.env
+docker-compose.override.yml
+
+# Logs
+*.log

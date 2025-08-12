@@ -17,7 +17,7 @@ LoadData:[module_num:1|svn_version:'Unknown'|variable_revision_number:6|show_win
     Rescale intensities?:Yes
 
 MeasureImageIntensity:[module_num:2|svn_version:'Unknown'|variable_revision_number:4|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select images to measure:CorrDNA, Cycle01_DAPI
+    Select images to measure:CorrDNA, Cycle01_DNA
     Measure the intensity only from areas enclosed by objects?:No
     Select input object sets:
     Calculate custom percentiles:No
@@ -48,7 +48,7 @@ FlagImage:[module_num:3|svn_version:'Unknown'|variable_revision_number:5|show_wi
     Skip image set if flagged?:Yes
     Flag is based on:Whole-image measurement
     Select the object to be used for flagging:None
-    Which measurement?:Intensity_MaxIntensity_Cycle01_DAPI
+    Which measurement?:Intensity_MaxIntensity_Cycle01_DNA
     Flag images based on low values?:Yes
     Minimum value:0.000001
     Flag images based on high values?:No
@@ -62,10 +62,10 @@ FlagImage:[module_num:3|svn_version:'Unknown'|variable_revision_number:5|show_wi
 Align:[module_num:4|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the alignment method:Normalized Cross Correlation
     Crop mode:Keep size
-    Select the first input image:Cycle01_DAPI
+    Select the first input image:Cycle01_DNA
     Name the first output image:AlignedRed
     Select the second input image:CorrDNA
-    Name the second output image:DAPI_Painting
+    Name the second output image:DNA_Painting
     Select the additional image:CorrZO1
     Name the output image:ZO1
     Select how the alignment is to be applied:Similarly
@@ -74,7 +74,7 @@ Align:[module_num:4|svn_version:'Unknown'|variable_revision_number:3|show_window
     Select how the alignment is to be applied:Similarly
 
 Threshold:[module_num:5|svn_version:'Unknown'|variable_revision_number:12|show_window:False|notes:['Identifies actual image area ']|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:Cycle01_DAPI
+    Select the input image:Cycle01_DNA
     Name the output image:NonPaddedAreas_Barcode
     Threshold strategy:Global
     Thresholding method:Manual
@@ -95,7 +95,7 @@ Threshold:[module_num:5|svn_version:'Unknown'|variable_revision_number:12|show_w
     Thresholding method:Minimum Cross-Entropy
 
 Threshold:[module_num:6|svn_version:'Unknown'|variable_revision_number:12|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:DAPI_Painting
+    Select the input image:DNA_Painting
     Name the output image:NonPaddedAreas_Paint
     Threshold strategy:Global
     Thresholding method:Manual
@@ -154,16 +154,16 @@ ImageMath:[module_num:8|svn_version:'Unknown'|variable_revision_number:5|show_wi
     Measurement:
 
 MaskImage:[module_num:9|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:DAPI_Painting
-    Name the output image:DAPI_Painting_EdgeMasked
+    Select the input image:DNA_Painting
+    Name the output image:DNA_Painting_EdgeMasked
     Use objects or an image as a mask?:Image
     Select object for mask:PaddedObjects_Both
     Select image for mask:NonPaddedAreas_Both
     Invert the mask?:No
 
 MaskImage:[module_num:10|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:Cycle01_DAPI
-    Name the output image:Cycle01_DAPI_EdgeMasked
+    Select the input image:Cycle01_DNA
+    Name the output image:Cycle01_DNA_EdgeMasked
     Use objects or an image as a mask?:Image
     Select object for mask:None
     Select image for mask:NonPaddedAreas_Both
@@ -186,7 +186,7 @@ MaskImage:[module_num:12|svn_version:'Unknown'|variable_revision_number:3|show_w
     Invert the mask?:No
 
 MeasureColocalization:[module_num:13|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select images to measure:Cycle01_DAPI_EdgeMasked, DAPI_Painting_EdgeMasked
+    Select images to measure:Cycle01_DNA_EdgeMasked, DNA_Painting_EdgeMasked
     Set threshold as percentage of maximum intensity for the images:15.0
     Select where to measure correlation:Across entire image
     Select objects to measure:
@@ -207,7 +207,7 @@ FlagImage:[module_num:14|svn_version:'Unknown'|variable_revision_number:5|show_w
     Skip image set if flagged?:No
     Flag is based on:Whole-image measurement
     Select the object to be used for flagging:None
-    Which measurement?:Correlation_Correlation_Cycle01_DAPI_EdgeMasked_DAPI_Painting_EdgeMasked
+    Which measurement?:Correlation_Correlation_Cycle01_DNA_EdgeMasked_DNA_Painting_EdgeMasked
     Flag images based on low values?:Yes
     Minimum value:0.7
     Flag images based on high values?:No
@@ -272,7 +272,7 @@ ImageMath:[module_num:18|svn_version:'Unknown'|variable_revision_number:5|show_w
     Measurement:Intensity_MaxIntensity_PaddedAreas_Barcode
 
 IdentifyPrimaryObjects:[module_num:19|svn_version:'Unknown'|variable_revision_number:15|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:DAPI_Painting_EdgeMasked
+    Select the input image:DNA_Painting_EdgeMasked
     Name the primary objects to be identified:ConfluentRegions
     Typical diameter of objects, in pixel units (Min,Max):500,5000
     Discard objects outside the diameter range?:Yes
@@ -337,8 +337,8 @@ CalculateMath:[module_num:21|svn_version:'Unknown'|variable_revision_number:3|sh
     Enter the upper bound:1.0
 
 MaskImage:[module_num:22|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:DAPI_Painting_EdgeMasked
-    Name the output image:MaskedDAPI_Painting
+    Select the input image:DNA_Painting_EdgeMasked
+    Name the output image:MaskedDNA_Painting
     Use objects or an image as a mask?:Objects
     Select object for mask:ConfluentRegions
     Select image for mask:None
@@ -361,7 +361,7 @@ MaskImage:[module_num:24|svn_version:'Unknown'|variable_revision_number:3|show_w
     Invert the mask?:Yes
 
 IdentifyPrimaryObjects:[module_num:25|svn_version:'Unknown'|variable_revision_number:14|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:MaskedDAPI_Painting
+    Select the input image:MaskedDNA_Painting
     Name the primary objects to be identified:Nuclei
     Typical diameter of objects, in pixel units (Min,Max):10,80
     Discard objects outside the diameter range?:Yes
@@ -399,7 +399,7 @@ IdentifyPrimaryObjects:[module_num:25|svn_version:'Unknown'|variable_revision_nu
     Thresholding method:Otsu
 
 IdentifyPrimaryObjects:[module_num:26|svn_version:'Unknown'|variable_revision_number:15|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
-    Select the input image:MaskedDAPI_Painting
+    Select the input image:MaskedDNA_Painting
     Name the primary objects to be identified:Nuclei
     Typical diameter of objects, in pixel units (Min,Max):10,80
     Discard objects outside the diameter range?:Yes
@@ -860,7 +860,7 @@ MeasureObjectNeighbors:[module_num:54|svn_version:'Unknown'|variable_revision_nu
     Select colormap:Default
 
 MeasureColocalization:[module_num:55|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select images to measure:Cycle01_DAPI, DAPI_Painting, Phalloidin, ZO1
+    Select images to measure:Cycle01_DNA, DNA_Painting, Phalloidin, ZO1
     Set threshold as percentage of maximum intensity for the images:15.0
     Select where to measure correlation:Both
     Select objects to measure:Cytoplasm, Cells, Nuclei
@@ -881,7 +881,7 @@ FlagImage:[module_num:56|svn_version:'Unknown'|variable_revision_number:5|show_w
     Skip image set if flagged?:No
     Flag is based on:Average measurement for all objects in each image
     Select the object to be used for flagging:Nuclei
-    Which measurement?:Correlation_Correlation_Cycle01_DAPI_DAPI_Painting
+    Which measurement?:Correlation_Correlation_Cycle01_DNA_DNA_Painting
     Flag images based on low values?:Yes
     Minimum value:0.9
     Flag images based on high values?:No
@@ -897,7 +897,7 @@ MeasureObjectIntensity:[module_num:57|svn_version:'Unknown'|variable_revision_nu
     Select objects to measure:Cells
 
 MeasureObjectIntensity:[module_num:58|svn_version:'Unknown'|variable_revision_number:4|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select images to measure:DAPI_Painting, Phalloidin, ZO1
+    Select images to measure:DNA_Painting, Phalloidin, ZO1
     Select objects to measure:Cells, Cytoplasm, Nuclei
 
 MeasureObjectSizeShape:[module_num:59|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
@@ -906,7 +906,7 @@ MeasureObjectSizeShape:[module_num:59|svn_version:'Unknown'|variable_revision_nu
     Calculate the advanced features?:Yes
 
 MeasureObjectIntensityDistribution:[module_num:60|svn_version:'Unknown'|variable_revision_number:6|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
-    Select images to measure:DAPI_Painting, Phalloidin, ZO1
+    Select images to measure:DNA_Painting, Phalloidin, ZO1
     Hidden:3
     Hidden:1
     Hidden:0
@@ -953,7 +953,7 @@ MeasureObjectIntensityDistribution:[module_num:61|svn_version:'Unknown'|variable
     Output image name:mito_radial_heatmap
 
 MeasureGranularity:[module_num:62|svn_version:'Unknown'|variable_revision_number:4|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
-    Select images to measure:DAPI_Painting, Phalloidin, ZO1
+    Select images to measure:DNA_Painting, Phalloidin, ZO1
     Measure within objects?:Yes
     Select objects to measure:Cytoplasm, Cells, Nuclei
     Subsampling factor for granularity measurements:0.25
@@ -962,7 +962,7 @@ MeasureGranularity:[module_num:62|svn_version:'Unknown'|variable_revision_number
     Range of the granular spectrum:16
 
 MeasureTexture:[module_num:63|svn_version:'Unknown'|variable_revision_number:7|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:False|wants_pause:False]
-    Select images to measure:DAPI_Painting, Phalloidin, ZO1
+    Select images to measure:DNA_Painting, Phalloidin, ZO1
     Select objects to measure:Cells, Cytoplasm, Nuclei
     Enter how many gray levels to measure the texture at:256
     Hidden:3
@@ -1011,7 +1011,7 @@ MeasureImageQuality:[module_num:65|svn_version:'Unknown'|variable_revision_numbe
     Assign pixels in the middle intensity class to the foreground or the background?:Foreground
 
 MeasureColocalization:[module_num:66|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select images to measure:Cycle01_A, Cycle01_C, Cycle01_DAPI, Cycle01_G, Cycle01_T, Cycle02_A, Cycle02_C, Cycle02_G, Cycle02_T, Cycle03_A, Cycle03_C, Cycle03_G
+    Select images to measure:Cycle01_A, Cycle01_C, Cycle01_DNA, Cycle01_G, Cycle01_T, Cycle02_A, Cycle02_C, Cycle02_G, Cycle02_T, Cycle03_A, Cycle03_C, Cycle03_G
     Set threshold as percentage of maximum intensity for the images:15.0
     Select where to measure correlation:Across entire image
     Select objects to measure:
@@ -1150,8 +1150,8 @@ Resize:[module_num:69|svn_version:'Unknown'|variable_revision_number:5|show_wind
     Additional image count:0
 
 Resize:[module_num:70|svn_version:'Unknown'|variable_revision_number:5|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:DAPI_Painting
-    Name the output image:ResizeDAPIPaintingForVis
+    Select the input image:DNA_Painting
+    Name the output image:ResizeDNAPaintingForVis
     Resizing method:Resize by a fraction or multiple of the original size
     X Resizing factor:0.5
     Y Resizing factor:0.5
@@ -1169,7 +1169,7 @@ GrayToColor:[module_num:71|svn_version:'Unknown'|variable_revision_number:4|show
     Rescale intensity:Yes
     Select the image to be colored red:Leave this black
     Select the image to be colored green:ResizePhalloidinForVis
-    Select the image to be colored blue:ResizeDAPIPaintingForVis
+    Select the image to be colored blue:ResizeDNAPaintingForVis
     Name the output image:ColorImage
     Relative weight for the red image:1.0
     Relative weight for the green image:1.0
@@ -1205,7 +1205,7 @@ SaveImages:[module_num:73|svn_version:'Unknown'|variable_revision_number:16|show
     Select the type of image to save:Image
     Select the image to save:ColorImage
     Select method for constructing file names:From image filename
-    Select image name for file prefix:Pre_DAPI_Painting
+    Select image name for file prefix:Pre_DNA_Painting
     Enter single file name:VisualizeAlignment
     Number of digits:4
     Append a suffix to the image file name?:Yes

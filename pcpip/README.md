@@ -87,7 +87,7 @@ docker-compose up cellprofiler
 
 For debugging or manual execution:
 ```bash
-docker-compose --profile interactive up cellprofiler-shell
+docker-compose run --rm cellprofiler-shell
 ```
 
 ### 3. Check Results
@@ -128,7 +128,7 @@ Modify these values in `scripts/run_pcpip.sh` as needed.
 If the pipeline fails, try the interactive shell to debug:
 
 ```bash
-# Start interactive shell (use run, not up)
+# Start interactive shell
 docker-compose run --rm cellprofiler-shell
 
 # Inside the container, check:

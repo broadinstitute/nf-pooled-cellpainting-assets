@@ -94,14 +94,14 @@ declare -A PIPELINE_CONFIG=(
   [7,metadata]="true"
   [9,metadata]="true"
 
-  # Run in background (true/false)
+  # Run in background (true/false) - memory-heavy pipelines run sequentially
   [1,background]="false"
   [2,background]="true"
   [3,background]="true"
   [5,background]="true"
-  [6,background]="true"
-  [7,background]="true"
-  [9,background]="true"
+  [6,background]="false"
+  [7,background]="false"
+  [9,background]="false"
 
   # Needs plugins (true/false)
   [1,plugins]="false"

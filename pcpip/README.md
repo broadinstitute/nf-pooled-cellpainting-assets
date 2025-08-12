@@ -44,7 +44,7 @@ git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins
 
 ### 2. Prepare Data
 
-Download and extract both the FIX-S1 input and output test datasets:
+Download and extract both the FIX-S1 input and output test datasets. These datasets were created using scripts in the [StarryNight repository](https://github.com/broadinstitute/starrynight/tree/main/starrynight/tests/fixtures/integration/utils) that extract representative subsets from full pooled Cell Painting experiments.
 
 ```bash
 mkdir -p data

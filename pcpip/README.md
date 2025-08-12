@@ -1,6 +1,6 @@
 # PCPIP Docker Setup
 
-This directory contains a containerized version of the PCPIP (Pooled Cell Painting Image Processing) pipeline using CellProfiler.
+This directory contains a containerized, miniaturized version of the PCPIP (Pooled Cell Painting Image Processing) pipeline using CellProfiler. This demo implementation processes a small subset of data that can run end-to-end in a single script.
 
 ## Directory Structure
 
@@ -13,16 +13,16 @@ pcpip/
 ├── data/              # Unified data directory (inputs, outputs, logs)
 │   ├── Source1/
 │   │   ├── Batch1/
-│   │   │   ├── images/                    # Original microscopy images
-│   │   │   ├── images_corrected/          # Pipeline-corrected images
-│   │   │   ├── images_aligned/            # Aligned barcode images
-│   │   │   ├── images_segmentation/       # Segmentation results
-│   │   │   └── illum/                     # Illumination correction files
+│   │   │   ├── images/                    # INPUT: Original microscopy images
+│   │   │   ├── images_corrected/          # OUTPUT: Pipeline-corrected images
+│   │   │   ├── images_aligned/            # OUTPUT: Aligned barcode images
+│   │   │   ├── images_segmentation/       # OUTPUT: Segmentation results
+│   │   │   └── illum/                     # OUTPUT: Illumination correction files
 │   │   └── workspace/
-│   │       ├── load_data_csv/             # Pipeline CSV configurations
-│   │       ├── analysis/                  # Final analysis results
-│   │       └── metadata/                  # Metadata files
-│   └── logs/                              # Timestamped execution logs
+│   │       ├── load_data_csv/             # INPUT: Pipeline CSV configurations
+│   │       ├── analysis/                  # OUTPUT: Final analysis results
+│   │       └── metadata/                  # INPUT: Metadata files (barcodes, etc.)
+│   └── logs/                              # OUTPUT: Timestamped execution logs
 ├── docker-compose.yml # Docker configuration
 └── README.md          # This file
 ```
@@ -94,53 +94,25 @@ docker-compose run --rm cellprofiler-shell
 
 All outputs are generated in `data/` - corrected images, analysis results, and logs in timestamped subdirectories.
 
-## Pipeline Sequence
+## Pipeline Overview
 
-The script runs 7 CellProfiler pipelines in sequence:
+Runs 7 CellProfiler pipelines in sequence:
 
-1. **Pipeline 1**: CP_Illum (illumination correction)
-2. **Pipeline 2**: CP_Apply_Illum (apply illumination correction)
-3. **Pipeline 3**: CP_SegmentationCheck (segmentation validation)
-4. **Pipeline 5**: BC_Illum (barcode illumination)
-5. **Pipeline 6**: BC_Apply_Illum (apply barcode illumination)
-6. **Pipeline 7**: BC_Preprocess (barcode preprocessing)
-7. **Pipeline 9**: Analysis (final analysis)
+1. **CP_Illum** → **CP_Apply_Illum** → **CP_SegmentationCheck**
+2. **BC_Illum** → **BC_Apply_Illum** → **BC_Preprocess**
+3. **Analysis** (final feature extraction)
 
-## Configuration
-
-The pipeline processes:
-- **Plate**: Plate1
-- **Wells**: WellA1, WellA2, WellB1
-- **Sites**: 0, 1
-- **SBS Cycles**: 1, 2, 3
-
-Modify these values in `scripts/run_pcpip.sh` as needed.
+*Configure in `scripts/run_pcpip.sh` as needed.*
 
 ## Troubleshooting
 
-- Check logs in `data/logs/[timestamp]/`
-- Ensure input data structure matches expected format
-- Verify all required CSV files are present
-- For plugin issues, check `plugins/CellProfiler-plugins/active_plugins/`
-
-### Debug Steps
-
-If the pipeline fails, try the interactive shell to debug:
+Check logs in `data/logs/[timestamp]/` for errors. For debugging:
 
 ```bash
-# Start interactive shell
+# Interactive shell
 docker-compose run --rm cellprofiler-shell
 
-# Inside the container, check:
+# Inside container
 ls -la /app/data/     # Verify data structure
-ls -la /app/pipelines/      # Verify pipeline files
-ls -la /app/plugins/        # Verify plugins
-ls -la /app/data/Source1/workspace/load_data_csv/  # Check CSV files
-bash -x /app/scripts/run_pcpip.sh  # Run script with debug output
+bash -x /app/scripts/run_pcpip.sh  # Run with debug output
 ```
-
-## Notes
-
-- The `plugins/` directory is not included in this repository - clone it separately as shown in setup
-- Use `.gitignore` to prevent committing large datasets in `data/` directories and the `plugins/` directory
-- For plugin documentation and issues, see the [CellProfiler-plugins repository](https://github.com/CellProfiler/CellProfiler-plugins)

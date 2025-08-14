@@ -8,5 +8,5 @@ Supporting assets and resources for the pooled Cell Painting Nextflow pipeline.
 
 ## Related Repositories
 
-- [nf-pooled-cellpainting](https://github.com/nf-core/nf-pooled-cellpainting) - Main nf-core pipeline
+- [nf-pooled-cellpainting](https://github.com/seqera-services/nf-pooled-cellpainting) - Main nf-core pipeline
 - [nf-pooled-cellpainting-infra](https://github.com/broadinstitute/nf-pooled-cellpainting-infra) - AWS CDK infrastructure

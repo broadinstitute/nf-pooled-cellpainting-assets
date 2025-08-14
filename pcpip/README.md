@@ -44,7 +44,19 @@ git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins
 
 ### 2. Prepare Data
 
-Download and extract both the FIX-S1 input and output test datasets. These datasets were created using scripts in the [StarryNight repository](https://github.com/broadinstitute/starrynight/tree/main/starrynight/tests/fixtures/integration/utils) that extract representative subsets from full pooled Cell Painting experiments.
+Download the FIX-S1 test dataset. This dataset was created using scripts in the [StarryNight repository](https://github.com/broadinstitute/starrynight/tree/main/starrynight/tests/fixtures/integration/utils) that extract representative subsets from full pooled Cell Painting experiments.
+
+#### Option A: Simple S3 Download (Recommended)
+
+```bash
+# Download pre-processed data directly from S3
+aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
+```
+
+#### Option B: Manual Setup from GitHub Releases
+
+<details>
+<summary>Click to expand manual setup instructions</summary>
 
 ```bash
 mkdir -p data
@@ -73,6 +85,8 @@ for csvfile in load_data_pipeline*.csv; do
 done
 cd -
 ```
+
+</details>
 
 ## Usage
 

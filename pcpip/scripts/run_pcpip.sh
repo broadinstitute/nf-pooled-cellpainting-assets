@@ -33,10 +33,9 @@ mkdir -p ${LOG_DIR}
 
 PLATE=Plate1
 # WELLS=("A1" "A2" "B1")
-WELLS=("A1")
-SITES=(0 1)
-# CYCLES=(1 2 3)
-CYCLES=(1 2)
+WELLS=("A1") # This can be an arbitrary subset of wells of Wthe load data csv files
+SITES=(0 1 2 3) # This has to be consistent with load data csv files
+CYCLES=(1 2 3) # This has to be consistent with the barcoding pipeline
 
 # Define CellProfiler pipeline configurations
 declare -A PIPELINE_CONFIG=(
@@ -129,9 +128,9 @@ declare -A STITCH_CONFIG=(
   [8,input]="images_corrected/barcoding/PLATE-WELL-SITE"
 
   # Output directory patterns - all 3 outputs per pipeline
-  [4,output_stitched]="images_corrected_stitched/cellpainting/PLATE/PLATE_WELL"
-  [4,output_cropped]="images_corrected_cropped/cellpainting/PLATE/PLATE_WELL"
-  [4,output_downsampled]="images_corrected_stitched_10X/cellpainting/PLATE/PLATE_WELL"
+  [4,output_stitched]="images_corrected_stitched/painting/PLATE/PLATE_WELL"
+  [4,output_cropped]="images_corrected_cropped/painting/PLATE/PLATE_WELL"
+  [4,output_downsampled]="images_corrected_stitched_10X/painting/PLATE/PLATE_WELL"
   [8,output_stitched]="images_corrected_stitched/barcoding/PLATE/PLATE_WELL_SITE"
   [8,output_cropped]="images_corrected_cropped/barcoding/PLATE/PLATE_WELL_SITE"
   [8,output_downsampled]="images_corrected_stitched_10X/barcoding/PLATE/PLATE_WELL_SITE"

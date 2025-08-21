@@ -479,7 +479,17 @@ if os.path.isdir(subdir):
                 filename = thisprefix + "_Well_" + eachwell + "_Site_{i}_" + thissuffix
 
                 # Set up the output filename for the stitched image
-                fileoutname = "Stitched" + filename.replace("{i}", "")
+                # Use track-specific filename patterns to match spec
+                if track_type == "painting":
+                    # Pipeline 4: Stitched{cp_channel}.tiff
+                    fileoutname = "Stitched" + thissuffixnicename + ".tiff"
+                elif track_type == "barcoding":
+                    # Pipeline 8: Stitched_Cycle{cycle}_{bc_channel}.tiff
+                    # thissuffixnicename already contains "Cycle##_Channel", so just prepend "Stitched_"
+                    fileoutname = "Stitched_" + thissuffixnicename + ".tiff"
+                else:
+                    # Fallback to original pattern
+                    fileoutname = "Stitched" + thissuffixnicename + ".tiff"
 
                 # STEP 7: Run the ImageJ stitching operation for this channel and well
                 IJ.run(

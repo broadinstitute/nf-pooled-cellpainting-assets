@@ -6,7 +6,11 @@
       "Bash(PIPELINE_STEP=4 docker-compose run --rm cellprofiler)",
       "Bash(PIPELINE_STEP=4 docker-compose run --rm fiji bash /app/scripts/run_pcpip.sh)",
       "Bash(docker search:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(docker run:*)",
+      "Bash(tree:*)",
+      "Bash(uv run:*)"
     ],
     "deny": [],
     "ask": [],

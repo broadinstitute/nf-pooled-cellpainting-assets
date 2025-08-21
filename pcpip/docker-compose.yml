@@ -14,8 +14,11 @@ services:
     environment:
       - DISPLAY=
       - PIPELINE_STEP=${PIPELINE_STEP}
+      - JAVA_OPTS=-Xmx2G
     stdin_open: true
     tty: true
+    mem_limit: 8g
+    memswap_limit: 8g
 
   cellprofiler-shell:
     image: cellprofiler/cellprofiler:4.2.6
@@ -51,3 +54,20 @@ services:
       - PIPELINE_STEP=${PIPELINE_STEP}
     stdin_open: true
     tty: true
+
+  fiji-shell:
+    image: fiji/fiji:latest
+    platform: linux/amd64
+    container_name: pcpip-fiji-shell
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./data:/app/data:rw
+    working_dir: /app
+    entrypoint: []
+    command: ["bash"]
+    environment:
+      - DISPLAY=
+    stdin_open: true
+    tty: true
+    profiles:
+      - interactive

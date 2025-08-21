@@ -1,36 +1,42 @@
-# PCPIP Docker Setup
+# PCPIP Docker Demo
 
-This directory contains a containerized, miniaturized version of the PCPIP (Pooled Cell Painting Image Processing) pipeline using CellProfiler. This demo implementation processes a small subset of data that can run end-to-end in a single script.
+This directory contains a containerized demonstration of the PCPIP (Pooled Cell Painting Image Processing) pipeline. The demo implements a complete end-to-end workflow using both CellProfiler and ImageJ/Fiji in a multi-container architecture.
 
 ## Directory Structure
 
 ```
 pcpip/
-├── pipelines/           # CellProfiler pipeline files (.cppipe)
-├── plugins/            # CellProfiler plugins (cloned separately)
-├── scripts/            # Processing scripts
-│   └── run_pcpip.sh   # Main pipeline execution script
-├── data/              # Unified data directory (inputs, outputs, logs)
-│   ├── Source1/
-│   │   ├── Batch1/
-│   │   │   ├── images/                    # INPUT: Original microscopy images
-│   │   │   ├── images_corrected/          # OUTPUT: Pipeline-corrected images
-│   │   │   ├── images_aligned/            # OUTPUT: Aligned barcode images
-│   │   │   ├── images_segmentation/       # OUTPUT: Segmentation results
-│   │   │   └── illum/                     # OUTPUT: Illumination correction files
-│   │   └── workspace/
-│   │       ├── load_data_csv/             # INPUT: Pipeline CSV configurations
-│   │       ├── analysis/                  # OUTPUT: Final analysis results
-│   │       └── metadata/                  # INPUT: Metadata files (barcodes, etc.)
-│   └── logs/                              # OUTPUT: Timestamped execution logs
-├── docker-compose.yml # Docker configuration
-└── README.md          # This file
+├── pipelines/                             # CellProfiler pipeline files (.cppipe)
+├── plugins/                               # CellProfiler plugins (cloned separately)
+├── scripts/                               # Processing scripts and utilities
+│   ├── run_pcpip.sh                       # Main pipeline orchestration script
+│   ├── stitch_crop.py                     # ImageJ/Fiji stitching and cropping
+│   ├── transform_pipeline9_csv.py         # CSV transformation for cropped tiles
+│   └── check_csv_files.py                 # File validation utility
+├── references/                            # Documentation and specifications
+│   └── pcpip-io.json                      # Pipeline input/output specifications
+├── data/                                  # Unified data directory (inputs, outputs, logs)
+│   ├── Source1/Batch1/
+│   │   ├── images/                        # INPUT: Original microscopy images
+│   │   ├── images_corrected/              # OUTPUT: Illumination-corrected images
+│   │   ├── images_corrected_stitched/     # OUTPUT: Stitched whole-well images
+│   │   ├── images_corrected_cropped/      # OUTPUT: Cropped tiles for analysis
+│   │   ├── images_corrected_stitched_10X/ # OUTPUT: Downsampled QC images
+│   │   ├── images_aligned/                # OUTPUT: Aligned barcode images
+│   │   └── illum/                         # OUTPUT: Illumination correction files
+│   └── workspace/
+│       ├── load_data_csv/                 # INPUT: Pipeline CSV configurations
+│       ├── analysis/                      # OUTPUT: Final analysis results
+│       └── metadata/                      # INPUT: Metadata files
+├── docker-compose.yml                     # Multi-container configuration
+└── README.md                              # This file
 ```
 
 ## Prerequisites
 
 - Docker and Docker Compose installed
 - Git (for cloning plugins)
+- `uv` (for running utility scripts)
 - Input data in the expected format
 
 ## Setup
@@ -53,84 +59,128 @@ aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --n
 
 ## Usage
 
-### 1. Run the Pipeline
+### Run the Complete Workflow
 
-Execute specific pipeline steps using the `PIPELINE_STEP` environment variable:
+Execute the full end-to-end workflow:
 
 ```bash
-# Run individual steps
-PIPELINE_STEP=1 docker-compose run --rm cellprofiler
-PIPELINE_STEP=4 docker-compose run --rm fiji          # CP stitching
-PIPELINE_STEP=8 docker-compose run --rm fiji          # BC stitching
-PIPELINE_STEP=9 docker-compose run --rm cellprofiler
-
-# Run multiple steps (CellProfiler only)
+# 1. Cell Painting track (illumination correction)
 PIPELINE_STEP="1,2,3" docker-compose run --rm cellprofiler
+
+# 2. Cell Painting stitching and cropping
+PIPELINE_STEP=4 docker-compose run --rm fiji
+
+# 3. Barcoding track (illumination correction + preprocessing)
 PIPELINE_STEP="5,6,7" docker-compose run --rm cellprofiler
 
-# Run by track
-PIPELINE_STEP="1,2,3" docker-compose run --rm cellprofiler     # CP core
-PIPELINE_STEP="5,6,7" docker-compose run --rm cellprofiler     # BC core
-PIPELINE_STEP=4 docker-compose run --rm fiji                   # CP stitching
-PIPELINE_STEP=8 docker-compose run --rm fiji                   # BC stitching
-PIPELINE_STEP=9 docker-compose run --rm cellprofiler           # Analysis
+# 4. Barcoding stitching and cropping
+PIPELINE_STEP=8 docker-compose run --rm fiji
+
+# 5. Analysis using cropped tiles
+PIPELINE_STEP=9 docker-compose run --rm cellprofiler
 ```
 
-> [!NOTE]
-> `PIPELINE_STEP` is required - there is no default "run all" option since steps 4 and 8 use a separate Fiji container.
+### Run Individual Steps
 
-### 2. Interactive Shell (Optional)
+```bash
+# CellProfiler pipelines
+PIPELINE_STEP=1 docker-compose run --rm cellprofiler    # CP illumination
+PIPELINE_STEP=2 docker-compose run --rm cellprofiler    # CP apply illumination
+PIPELINE_STEP=3 docker-compose run --rm cellprofiler    # CP segmentation check
+PIPELINE_STEP=5 docker-compose run --rm cellprofiler    # BC illumination
+PIPELINE_STEP=6 docker-compose run --rm cellprofiler    # BC apply illumination
+PIPELINE_STEP=7 docker-compose run --rm cellprofiler    # BC preprocessing
+PIPELINE_STEP=9 docker-compose run --rm cellprofiler    # Analysis (uses cropped tiles)
+
+# ImageJ/Fiji stitching pipelines
+PIPELINE_STEP=4 docker-compose run --rm fiji            # CP stitch & crop
+PIPELINE_STEP=8 docker-compose run --rm fiji            # BC stitch & crop
+```
+
+### File Validation
+
+Check if expected files exist using the validation utility:
+
+```bash
+# Verify cropped tile files exist for Pipeline 9
+uv run scripts/check_csv_files.py data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed/load_data_pipeline9_cropped.csv
+```
+
+### Interactive Shell (Optional)
 
 For debugging or manual execution:
 ```bash
-docker-compose run --rm cellprofiler-shell
+docker-compose run --rm cellprofiler-shell  # CellProfiler environment
+docker-compose run --rm fiji-shell          # ImageJ/Fiji environment
 ```
 
-### 3. Check Results
-
-All outputs are generated in `data/` - corrected images, analysis results, and logs in timestamped subdirectories.
-
-### 4. Cleanup
+### Cleanup
 
 ```bash
-base_dir=data/Source1
+base_dir=data/Source1/Batch1
 
-dirs=(
-    Batch1/illum
-    Batch1/images_aligned
-    Batch1/images_corrected
-    Batch1/images_segmentation
-    workspace/analysis
-)
-
-rm -rf -- "${dirs[@]/#/${base_dir}/}"
+# Remove output directories
+rm -rf "${base_dir}"/illum \
+       "${base_dir}"/images_aligned \
+       "${base_dir}"/images_corrected*
 ```
 
 ## Pipeline Overview
 
-Runs 9 pipelines in sequence:
+Complete 9-step workflow with multi-container architecture:
 
-1. **CP_Illum** (Pipeline 1) - Calculate CP illumination correction
-2. **CP_Apply_Illum** (Pipeline 2) - Apply CP illumination correction
-3. **CP_SegmentationCheck** (Pipeline 3) - Validate CP segmentation
-4. **CP_StitchCrop** (Pipeline 4) - Stitch CP images *(Fiji/ImageJ)*
-5. **BC_Illum** (Pipeline 5) - Calculate BC illumination correction
-6. **BC_Apply_Illum** (Pipeline 6) - Apply BC illumination correction
-7. **BC_Preprocess** (Pipeline 7) - Preprocess barcoding images
-8. **BC_StitchCrop** (Pipeline 8) - Stitch BC images *(Fiji/ImageJ)*
-9. **Analysis** (Pipeline 9) - Final feature extraction
+| Step | Pipeline                 | Container    | Description                                     |
+| ---- | ------------------------ | ------------ | ----------------------------------------------- |
+| 1    | **CP_Illum**             | CellProfiler | Calculate cell painting illumination correction |
+| 2    | **CP_Apply_Illum**       | CellProfiler | Apply cell painting illumination correction     |
+| 3    | **CP_SegmentationCheck** | CellProfiler | Validate cell painting segmentation             |
+| 4    | **CP_StitchCrop**        | **Fiji**     | Stitch & crop cell painting images              |
+| 5    | **BC_Illum**             | CellProfiler | Calculate barcoding illumination correction     |
+| 6    | **BC_Apply_Illum**       | CellProfiler | Apply barcoding illumination correction         |
+| 7    | **BC_Preprocess**        | CellProfiler | Preprocess barcoding images                     |
+| 8    | **BC_StitchCrop**        | **Fiji**     | Stitch & crop barcoding images                  |
+| 9    | **Analysis**             | CellProfiler | Feature extraction from **cropped tiles**       |
 
-*Steps 4 and 8 use ImageJ/Fiji for stitching and cropping operations.*
+## Utility Scripts
+
+Additional tools for development and debugging:
+
+```bash
+# Transform original Pipeline 9 CSV to use output of Pipelines 4 and 8 stitched/cropped images
+uv run scripts/transform_pipeline9_csv.py load_data_pipeline9.csv load_data_pipeline9_cropped.csv
+
+# Validate file existence from CSV
+uv run scripts/check_csv_files.py load_data.csv
+
+# Interactive debugging
+docker-compose run --rm cellprofiler-shell  # CellProfiler environment
+docker-compose run --rm fiji-shell          # ImageJ/Fiji environment
+```
 
 ## Troubleshooting
 
-Check logs in `data/logs/[timestamp]/` for errors. For debugging:
+### Pipeline 9 Memory Issues
+If Pipeline 9 gets killed during execution:
+1. **Memory limits**: Docker compose now sets 8GB memory limit
+2. **Java heap**: Limited to 2GB via JAVA_OPTS environment variable
+3. **If still failing**: Increase `mem_limit` in docker-compose.yml or run fewer sites
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Missing Files**: Use `check_csv_files.py` to verify expected files exist
+2. **Memory Issues**: Stitching steps may require sequential execution for large datasets
+3. **Path Errors**: Check that container paths (`/app/data/`) match expected structure
+
+### Debug Commands
 
 ```bash
-# Interactive shell
-docker-compose run --rm cellprofiler-shell
+# Check logs
+ls data/logs/*/        # Find latest timestamp
+tail data/logs/*/pipeline*.log  # View recent logs
 
-# Inside container
-ls -la /app/data/     # Verify data structure
-bash -x /app/scripts/run_pcpip.sh  # Run with debug output
+# Verify data structure
+docker-compose run --rm cellprofiler-shell
+ls -la /app/data/      # Inside container
 ```

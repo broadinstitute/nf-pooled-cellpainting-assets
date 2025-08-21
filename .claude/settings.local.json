@@ -10,7 +10,11 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(docker run:*)",
       "Bash(tree:*)",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(git commit:*)",
+      "Bash(docker stats:*)",
+      "Bash(docker inspect:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": [],

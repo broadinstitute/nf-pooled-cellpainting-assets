@@ -34,8 +34,11 @@ mkdir -p ${LOG_DIR}
 PLATE=Plate1
 # WELLS=("A1" "A2" "B1")
 WELLS=("A1") # This can be an arbitrary subset of wells of Wthe load data csv files
-SITES=(0 1 2 3) # This has to be consistent with load data csv files
+SITES=(0 1 2 3) # This has to be consistent with load data csv files and the settings in stitch_crop.py (rows x columns)
 CYCLES=(1 2 3) # This has to be consistent with the barcoding pipeline
+
+# Derived tile indices for cropped outputs used by Pipeline 9 (Analysis)
+TILES=(1 2 3 4)
 
 # Define CellProfiler pipeline configurations
 declare -A PIPELINE_CONFIG=(
@@ -406,7 +409,8 @@ if should_run_step 9; then
   echo "Running Pipeline 9: Analysis"
   PIPELINE=9
   for WELL in "${WELLS[@]}"; do
-      for SITE in "${SITES[@]}"; do
+      # Use TILES instead of SITES for Analysis
+      for SITE in "${TILES[@]}"; do
           run_pipeline $PIPELINE
       done
   done

@@ -38,6 +38,9 @@ pcpip/
 - Git (for cloning plugins)
 - `uv` (for running utility scripts)
 - Input data in the expected format
+- **For Pipeline 9 (Analysis)**: Docker Desktop memory ≥16GB (macOS/Windows only)
+  - Open Docker Desktop → Settings → Resources → Advanced → Memory Limit: 16GB
+  - Pipelines 1-8 work fine with default 8GB settings
 
 ## Setup
 
@@ -76,7 +79,7 @@ PIPELINE_STEP="5,6,7" docker-compose run --rm cellprofiler
 # 4. Barcoding stitching and cropping
 PIPELINE_STEP=8 docker-compose run --rm fiji
 
-# 5. Analysis using cropped tiles
+# 5. Analysis using cropped tiles (memory-intensive)
 PIPELINE_STEP=9 docker-compose run --rm cellprofiler
 ```
 
@@ -90,7 +93,7 @@ PIPELINE_STEP=3 docker-compose run --rm cellprofiler    # CP segmentation check
 PIPELINE_STEP=5 docker-compose run --rm cellprofiler    # BC illumination
 PIPELINE_STEP=6 docker-compose run --rm cellprofiler    # BC apply illumination
 PIPELINE_STEP=7 docker-compose run --rm cellprofiler    # BC preprocessing
-PIPELINE_STEP=9 docker-compose run --rm cellprofiler    # Analysis (uses cropped tiles)
+PIPELINE_STEP=9 docker-compose run --rm cellprofiler    # Analysis (memory-intensive)
 
 # ImageJ/Fiji stitching pipelines
 PIPELINE_STEP=4 docker-compose run --rm fiji            # CP stitch & crop
@@ -147,7 +150,8 @@ Additional tools for development and debugging:
 
 ```bash
 # Transform original Pipeline 9 CSV to use output of Pipelines 4 and 8 stitched/cropped images
-uv run scripts/transform_pipeline9_csv.py load_data_pipeline9.csv load_data_pipeline9_cropped.csv
+LOAD_DATA_PATH=data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed
+uv run scripts/transform_pipeline9_csv.py ${LOAD_DATA_PATH}/load_data_pipeline9.csv ${LOAD_DATA_PATH}/load_data_pipeline9_cropped.csv
 
 # Validate file existence from CSV
 uv run scripts/check_csv_files.py load_data.csv
@@ -160,10 +164,7 @@ docker-compose run --rm fiji-shell          # ImageJ/Fiji environment
 ## Troubleshooting
 
 ### Pipeline 9 Memory Issues
-If Pipeline 9 gets killed during execution:
-1. **Memory limits**: Docker compose now sets 8GB memory limit
-2. **Java heap**: Limited to 2GB via JAVA_OPTS environment variable
-3. **If still failing**: Increase `mem_limit` in docker-compose.yml or run fewer sites
+If Pipeline 9 gets killed, increase Docker Desktop memory to 24GB or 32GB (see Prerequisites).
 
 ## Troubleshooting
 

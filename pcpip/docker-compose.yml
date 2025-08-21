@@ -17,8 +17,6 @@ services:
       - JAVA_OPTS=-Xmx2G
     stdin_open: true
     tty: true
-    mem_limit: 8g
-    memswap_limit: 8g
 
   cellprofiler-shell:
     image: cellprofiler/cellprofiler:4.2.6

@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Transform load_data_pipeline9.csv to use cropped tile outputs from Pipeline 4 and 8."""
+"""Transform load_data_pipeline9.csv to use cropped tile outputs from Pipeline 4 and 8.
+
+WARNING: Highly customized for the FIX-S1 demo dataset.
+- This script exploits a one-off coincidence where the number of cropped tiles
+  equals the number of original acquisition sites. In general experiments this
+  is NOT true and these assumptions will not hold.
+- It also relies on specific filename and path patterns for regex-based
+  rewrites (e.g., Plate_*_Well_*_Site_*). If your data do not match these
+  patterns, the transforms will be incorrect.
+
+Use with care and adapt the transforms for your dataset before production use.
+"""
 
 # /// script
 # dependencies = ["pandas"]
@@ -71,6 +82,13 @@ def main():
             df[col] = df[col].str.replace(
                 r"Site_(\d+)", lambda m: f"Site_{int(m.group(1)) + 1}", regex=True
             )
+
+    # 5b. Increment numeric Metadata_Site to keep it consistent with filename site increments
+    if "Metadata_Site" in df.columns:
+        # Coerce to integer and increment
+        df["Metadata_Site"] = (
+            pd.to_numeric(df["Metadata_Site"], errors="raise").astype(int) + 1
+        )
 
     # Save transformed CSV
     df.to_csv(output_file, index=False)

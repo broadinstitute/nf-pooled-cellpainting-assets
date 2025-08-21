@@ -14,7 +14,9 @@
       "Bash(git commit:*)",
       "Bash(docker stats:*)",
       "Bash(docker inspect:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(grep:*)",
+      "Bash(docker compose run:*)"
     ],
     "deny": [],
     "ask": [],

@@ -84,6 +84,38 @@ docker-compose run --rm fiji-shell
 rm -rf data/Source1/Batch1/{illum,images_aligned,images_corrected*}
 ```
 
+```bash
+# Test single well stitching and cropping
+
+docker compose run --rm \
+  -e STITCH_INPUT_BASE="/app/data/Source1/Batch1" \
+  -e STITCH_TRACK_TYPE="painting" \
+  -e STITCH_OUTPUT_TAG="Plate1-A1" \
+  -e STITCH_CHANNEL="DNA" \
+  -e STITCH_AUTORUN="true" \
+  fiji /opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/stitch_crop.py > /tmp/stitch_crop_painting_Plate1_A1.log 2>&1
+
+grep "Saving /app/data/" /tmp/stitch_crop_painting_Plate1_A1.log
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrCHN2.tiff, width=5920, height=5920
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_1.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_2.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_3.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_4.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrCHN2.tiff, width=592, height=592
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrDNA.tiff, width=5920, height=5920
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_1.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_2.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_3.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_4.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrDNA.tiff, width=592, height=592
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrPhalloidin.tiff, width=5920, height=5920
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_1.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_2.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_3.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_4.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrPhalloidin.tiff, width=592, height=592
+```
+
 ### Utility Scripts
 
 ```bash

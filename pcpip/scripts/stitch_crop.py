@@ -250,7 +250,7 @@ logger.info("Checking if directory exists: {}".format(subdir))
 a = os.listdir(subdir)
 logger.info("Contents of {}: {}".format(subdir, a))
 
-# Discover the actual well directory name from input (e.g., "Plate1-A1")
+# Discover the actual well directory name from input (e.g., "Plate1-A1" or "Plate1-A1-0")
 actual_well_dirname = None
 for x in a:
     if os.path.isdir(os.path.join(subdir, x)):
@@ -262,14 +262,26 @@ if not actual_well_dirname:
     logger.error("No well directory found in input")
     sys.exit(1)
 
-# Create well-specific output directories using the discovered name
-out_subdir = os.path.join(outfolder, actual_well_dirname)
-tile_subdir = os.path.join(tile_outdir, actual_well_dirname)
-downsample_subdir = os.path.join(downsample_outdir, actual_well_dirname)
+# For barcoding track, remove the site suffix from the directory name
+# (e.g., "Plate1-A1-0" -> "Plate1-A1")
+output_dirname = actual_well_dirname
+if track_type == "barcoding" and "-" in actual_well_dirname:
+    # Check if the last part after the final dash is a number (site)
+    parts = actual_well_dirname.rsplit("-", 1)
+    if len(parts) == 2 and parts[1].isdigit():
+        output_dirname = parts[0]
+        logger.info(
+            "Removed site suffix for barcoding: {} -> {}".format(
+                actual_well_dirname, output_dirname
+            )
+        )
 
-logger.info(
-    "Creating well-specific directories using name: {}".format(actual_well_dirname)
-)
+# Create well-specific output directories using the cleaned name
+out_subdir = os.path.join(outfolder, output_dirname)
+tile_subdir = os.path.join(tile_outdir, output_dirname)
+downsample_subdir = os.path.join(downsample_outdir, output_dirname)
+
+logger.info("Creating well-specific directories using name: {}".format(output_dirname))
 logger.info(
     "Well directories: \n - Stitched: {}\n - Cropped: {}\n - Downsampled: {}".format(
         out_subdir, tile_subdir, downsample_subdir
@@ -479,17 +491,8 @@ if os.path.isdir(subdir):
                 filename = thisprefix + "_Well_" + eachwell + "_Site_{i}_" + thissuffix
 
                 # Set up the output filename for the stitched image
-                # Use track-specific filename patterns to match spec
-                if track_type == "painting":
-                    # Pipeline 4: Stitched{cp_channel}.tiff
-                    fileoutname = "Stitched" + thissuffixnicename + ".tiff"
-                elif track_type == "barcoding":
-                    # Pipeline 8: Stitched_Cycle{cycle}_{bc_channel}.tiff
-                    # thissuffixnicename already contains "Cycle##_Channel", so just prepend "Stitched_"
-                    fileoutname = "Stitched_" + thissuffixnicename + ".tiff"
-                else:
-                    # Fallback to original pattern
-                    fileoutname = "Stitched" + thissuffixnicename + ".tiff"
+                # Always use the "Stitched_" prefix for all track types
+                fileoutname = "Stitched_" + thissuffixnicename + ".tiff"
 
                 # STEP 7: Run the ImageJ stitching operation for this channel and well
                 IJ.run(

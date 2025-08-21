@@ -281,11 +281,11 @@
         "outputs": {
             "stitched_images": {
                 "patterns": [
-                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/Stitched{cp_channel}.tiff",
-                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/StitchedTopLeft{cp_channel}.tiff",
-                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/StitchedTopRight{cp_channel}.tiff",
-                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/StitchedBottomLeft{cp_channel}.tiff",
-                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/StitchedBottomRight{cp_channel}.tiff"
+                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/Stitched_Corr{cp_channel}.tiff",
+                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/StitchedTopLeft_Corr{cp_channel}.tiff",
+                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/StitchedTopRight_Corr{cp_channel}.tiff",
+                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/StitchedBottomLeft_Corr{cp_channel}.tiff",
+                    "{batch}/images_corrected_stitched/painting/{plate}-{well}/StitchedBottomRight_Corr{cp_channel}.tiff"
                 ]
             },
             "cropped_tiles": {
@@ -295,7 +295,7 @@
             },
             "previews": {
                 "patterns": [
-                    "{batch}/images_corrected_stitched_10X/painting/{plate}-{well}/Stitched{cp_channel}.tiff"
+                    "{batch}/images_corrected_stitched_10X/painting/{plate}-{well}/Stitched_Corr{cp_channel}.tiff"
                 ]
             }
         }

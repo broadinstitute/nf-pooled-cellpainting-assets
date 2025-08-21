@@ -30,9 +30,11 @@ def main():
                 "images_corrected/", "images_corrected_cropped/"
             )
 
-    # 2. Add channel subdirectories to barcoding paths
+    # 2. Transform barcoding paths: remove site suffix and add channel subdirectories
     barcoding_cols = [col for col in df.columns if col.startswith("PathName_Cycle")]
     for col in barcoding_cols:
+        # Remove site suffix from paths (e.g., Plate1-A1-0 -> Plate1-A1)
+        df[col] = df[col].str.replace(r"/(Plate\d+-[A-Z]\d+)-\d+$", r"/\1", regex=True)
         # Extract channel from column name: PathName_Cycle01_A -> Cycle01_A
         channel = col.replace("PathName_", "")
         df[col] = df[col] + "/" + channel + "/"

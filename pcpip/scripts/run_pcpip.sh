@@ -55,7 +55,7 @@ declare -A PIPELINE_CONFIG=(
   [5,data]="load_data_pipeline5.csv"
   [6,data]="load_data_pipeline6.csv"
   [7,data]="load_data_pipeline7.csv"
-  [9,data]="load_data_pipeline9.csv"
+  [9,data]="load_data_pipeline9_cropped.csv"
 
   # Output directory patterns
   [1,output]="illum/PLATE"

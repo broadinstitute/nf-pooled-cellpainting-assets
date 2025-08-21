@@ -11,6 +11,9 @@ Containerized PCPIP (Pooled Cell Painting Image Processing) pipeline demo using 
 ### Setup & Run
 
 ```bash
+# Run all commands from the pcpip/ directory
+cd pcpip/
+
 # 1. Clone plugins
 git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/active_plugins
 

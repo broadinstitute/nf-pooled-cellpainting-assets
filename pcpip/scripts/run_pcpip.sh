@@ -128,31 +128,39 @@ declare -A PIPELINE_CONFIG=(
 declare -A STITCH_CONFIG=(
   # Input directory patterns (relative to /app/data/Source1/Batch1/)
   [4,input]="images_corrected/painting/PLATE-WELL"
-  [8,input]="images_corrected/barcoding/PLATE-WELL-SITE"
+  [8,input]="images_corrected/barcoding/PLATE-WELL"
 
   # Output directory patterns - all 3 outputs per pipeline
-  [4,output_stitched]="images_corrected_stitched/painting/PLATE/PLATE_WELL"
-  [4,output_cropped]="images_corrected_cropped/painting/PLATE/PLATE_WELL"
-  [4,output_downsampled]="images_corrected_stitched_10X/painting/PLATE/PLATE_WELL"
-  [8,output_stitched]="images_corrected_stitched/barcoding/PLATE/PLATE_WELL_SITE"
-  [8,output_cropped]="images_corrected_cropped/barcoding/PLATE/PLATE_WELL_SITE"
-  [8,output_downsampled]="images_corrected_stitched_10X/barcoding/PLATE/PLATE_WELL_SITE"
+  [4,output_stitched]="images_corrected_stitched/painting/PLATE/PLATE-WELL"
+  [4,output_cropped]="images_corrected_cropped/painting/PLATE/PLATE-WELL"
+  [4,output_downsampled]="images_corrected_stitched_10X/painting/PLATE/PLATE-WELL"
+  [8,output_stitched]="images_corrected_stitched/barcoding/PLATE/PLATE-WELL"
+  [8,output_cropped]="images_corrected_cropped/barcoding/PLATE/PLATE-WELL"
+  [8,output_downsampled]="images_corrected_stitched_10X/barcoding/PLATE/PLATE-WELL"
+
+  # Track type for each pipeline
+  [4,track]="painting"
+  [8,track]="barcoding"
+
+  # Output pattern for each pipeline
+  [4,output_pattern]="PLATE-WELL"
+  [8,output_pattern]="PLATE-WELL"
 
   # Log filename patterns
   [4,log]="pipeline4_PLATE_WELL"
-  [8,log]="pipeline8_PLATE_WELL_SITE"
+  [8,log]="pipeline8_PLATE_WELL"
 
   # Required parameters (comma-separated)
   [4,params]="PLATE,WELL"
-  [8,params]="PLATE,WELL,SITE"
+  [8,params]="PLATE,WELL"
 
   # Script to run (single parameterized script)
   [4,script]="stitch_crop.py"
   [8,script]="stitch_crop.py"
 
   # Run in background (false for sequential execution)
-  [4,background]="false"
-  [8,background]="false"
+  [4,background]="true"
+  [8,background]="true"
 )
 
 # Function to apply variable substitution to a pattern
@@ -270,16 +278,9 @@ run_stitchcrop_pipeline() {
 
   echo "Running Pipeline $pipeline (Stitch-Crop), logging to: $log_file"
 
-  # Determine track type and output pattern based on pipeline
-  local track_type=""
-  local output_pattern=""
-  if [[ "$pipeline" == "4" ]]; then
-    track_type="painting"
-    output_pattern="PLATE_WELL"
-  elif [[ "$pipeline" == "8" ]]; then
-    track_type="barcoding"
-    output_pattern="PLATE_WELL_SITE"
-  fi
+  # Get track type and output pattern from STITCH_CONFIG
+  local track_type=${STITCH_CONFIG[$pipeline,track]}
+  local output_pattern=${STITCH_CONFIG[$pipeline,output_pattern]}
 
   # Set environment variables for the Python script to read
   local cmd="STITCH_INPUT_BASE=\"${REPRODUCE_DIR}/Source1/Batch1\" \
@@ -348,7 +349,7 @@ if should_run_step 3; then
   wait
 fi
 
-# 4_CP_StitchCrop - NEW
+# 4_CP_StitchCrop - PLATE, WELL
 if should_run_step 4; then
   echo "Running Pipeline 4: CP_StitchCrop"
   PIPELINE=4
@@ -392,14 +393,12 @@ if should_run_step 7; then
   wait
 fi
 
-# 8_BC_StitchCrop - NEW
+# 8_BC_StitchCrop - PLATE, WELL
 if should_run_step 8; then
   echo "Running Pipeline 8: BC_StitchCrop"
   PIPELINE=8
   for WELL in "${WELLS[@]}"; do
-      for SITE in "${SITES[@]}"; do
-          run_stitchcrop_pipeline $PIPELINE
-      done
+      run_stitchcrop_pipeline $PIPELINE
   done
   wait
 fi

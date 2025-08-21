@@ -120,8 +120,13 @@ grep "Saving /app/data/" /tmp/stitch_crop_painting_Plate1_A1.log
 
 ```bash
 # Transform Pipeline 9 CSV for cropped tiles
-uv run scripts/transform_pipeline9_csv.py input.csv output.csv
+BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+uv run scripts/transform_pipeline9_csv.py ${BASE_DIR}/load_data_pipeline9.csv ${BASE_DIR}/load_data_pipeline9_cropped.csv
 
-# Validate files exist
-uv run scripts/check_csv_files.py load_data.csv
+# Validate files exist for input to Pipeline 9 (check for Well A1)
+# Run this after running Pipelines 1-8
+BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_cropped.csv') WHERE Metadata_Well = 'A1') TO '/tmp/load_data_pipeline9_cropped_A1.csv' (FORMAT CSV, HEADER);"
+uv run scripts/check_csv_files.py /tmp/load_data_pipeline9_cropped_A1.csv
+# Total: 64, Found: 64, Missing: 0
 ```

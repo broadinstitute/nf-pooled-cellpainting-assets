@@ -1,0 +1,36 @@
+services:
+  cellprofiler:
+    image: cellprofiler/cellprofiler:4.2.6
+    platform: linux/amd64
+    container_name: pcpip-cellprofiler
+    volumes:
+      - ./pipelines:/app/pipelines:ro
+      - ./plugins:/app/plugins:ro
+      - ./scripts:/app/scripts:ro
+      - ./data:/app/data:rw
+    working_dir: /app/scripts
+    entrypoint: []
+    command: ["bash", "run_pcpip.sh"]
+    environment:
+      - DISPLAY=
+    stdin_open: true
+    tty: true
+
+  cellprofiler-shell:
+    image: cellprofiler/cellprofiler:4.2.6
+    platform: linux/amd64
+    container_name: pcpip-cellprofiler-shell
+    volumes:
+      - ./pipelines:/app/pipelines:ro
+      - ./plugins:/app/plugins:ro
+      - ./scripts:/app/scripts:ro
+      - ./data:/app/data:rw
+    working_dir: /app
+    entrypoint: []
+    command: ["bash"]
+    environment:
+      - DISPLAY=
+    stdin_open: true
+    tty: true
+    profiles:
+      - interactive

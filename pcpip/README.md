@@ -83,23 +83,6 @@ PIPELINE_STEP=8 docker-compose run --rm fiji
 PIPELINE_STEP=9 docker-compose run --rm cellprofiler
 ```
 
-### Run Individual Steps
-
-```bash
-# CellProfiler pipelines
-PIPELINE_STEP=1 docker-compose run --rm cellprofiler    # CP illumination
-PIPELINE_STEP=2 docker-compose run --rm cellprofiler    # CP apply illumination
-PIPELINE_STEP=3 docker-compose run --rm cellprofiler    # CP segmentation check
-PIPELINE_STEP=5 docker-compose run --rm cellprofiler    # BC illumination
-PIPELINE_STEP=6 docker-compose run --rm cellprofiler    # BC apply illumination
-PIPELINE_STEP=7 docker-compose run --rm cellprofiler    # BC preprocessing
-PIPELINE_STEP=9 docker-compose run --rm cellprofiler    # Analysis (memory-intensive)
-
-# ImageJ/Fiji stitching pipelines
-PIPELINE_STEP=4 docker-compose run --rm fiji            # CP stitch & crop
-PIPELINE_STEP=8 docker-compose run --rm fiji            # BC stitch & crop
-```
-
 ### File Validation
 
 Check if expected files exist using the validation utility:
@@ -132,41 +115,36 @@ rm -rf "${base_dir}"/illum \
 
 Complete 9-step workflow with multi-container architecture:
 
-| Step | Pipeline                 | Container    | Description                                     |
-| ---- | ------------------------ | ------------ | ----------------------------------------------- |
-| 1    | **CP_Illum**             | CellProfiler | Calculate cell painting illumination correction |
-| 2    | **CP_Apply_Illum**       | CellProfiler | Apply cell painting illumination correction     |
-| 3    | **CP_SegmentationCheck** | CellProfiler | Validate cell painting segmentation             |
-| 4    | **CP_StitchCrop**        | **Fiji**     | Stitch & crop cell painting images              |
-| 5    | **BC_Illum**             | CellProfiler | Calculate barcoding illumination correction     |
-| 6    | **BC_Apply_Illum**       | CellProfiler | Apply barcoding illumination correction         |
-| 7    | **BC_Preprocess**        | CellProfiler | Preprocess barcoding images                     |
-| 8    | **BC_StitchCrop**        | **Fiji**     | Stitch & crop barcoding images                  |
-| 9    | **Analysis**             | CellProfiler | Feature extraction from **cropped tiles**       |
+| Step | Pipeline                 | Container    | Description                     |
+| ---- | ------------------------ | ------------ | ------------------------------- |
+| 1    | **CP_Illum**             | CellProfiler | Calculate painting illumination |
+| 2    | **CP_Apply_Illum**       | CellProfiler | Apply painting illumination     |
+| 3    | **CP_SegmentationCheck** | CellProfiler | Validate segmentation           |
+| 4    | **CP_StitchCrop**        | **Fiji**     | Stitch & crop painting images   |
+| 5    | **BC_Illum**             | CellProfiler | Calculate barcode illumination  |
+| 6    | **BC_Apply_Illum**       | CellProfiler | Apply barcode illumination      |
+| 7    | **BC_Preprocess**        | CellProfiler | Preprocess barcode images       |
+| 8    | **BC_StitchCrop**        | **Fiji**     | Stitch & crop barcode images    |
+| 9    | **Analysis**             | CellProfiler | Feature extraction from tiles   |
 
 ## Utility Scripts
 
-Additional tools for development and debugging:
-
 ```bash
-# Transform original Pipeline 9 CSV to use output of Pipelines 4 and 8 stitched/cropped images
-LOAD_DATA_PATH=data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed
-uv run scripts/transform_pipeline9_csv.py ${LOAD_DATA_PATH}/load_data_pipeline9.csv ${LOAD_DATA_PATH}/load_data_pipeline9_cropped.csv
+# Transform Pipeline 9 CSV for cropped tiles
+uv run scripts/transform_pipeline9_csv.py input.csv output.csv
 
 # Validate file existence from CSV
 uv run scripts/check_csv_files.py load_data.csv
 
 # Interactive debugging
-docker-compose run --rm cellprofiler-shell  # CellProfiler environment
-docker-compose run --rm fiji-shell          # ImageJ/Fiji environment
+docker-compose run --rm cellprofiler-shell
+docker-compose run --rm fiji-shell
 ```
 
 ## Troubleshooting
 
 ### Pipeline 9 Memory Issues
 If Pipeline 9 gets killed, increase Docker Desktop memory to 24GB or 32GB (see Prerequisites).
-
-## Troubleshooting
 
 ### Common Issues
 

@@ -66,37 +66,43 @@ def confirm_continue(message="Continue to the next step?"):
     return response == "y" or response == "yes"
 
 
-# Configuration parameters with sensible defaults
-# Override any of these with environment variables if needed
+# Helper function to get required environment variables
+def get_required_env(var_name):
+    """Get a required environment variable or exit."""
+    value = os.getenv(var_name)
+    if not value:
+        logger.error(f"{var_name} environment variable is required")
+        sys.exit(1)
+    return value
 
-# Input/output directories
-input_file_location = os.getenv(
-    "STITCH_INPUT_BASE", "/app/data"
-)  # Default to container path
-track_type = os.getenv("STITCH_TRACK_TYPE", "painting")  # Default to painting images
-out_subdir_tag = os.getenv("STITCH_OUTPUT_TAG", "Plate_Well")  # Default output tag
+
+# Configuration parameters - all required from environment variables
+# These MUST be provided by the calling script (run_pcpip.sh)
+input_file_location = get_required_env("STITCH_INPUT_BASE")
+track_type = get_required_env("STITCH_TRACK_TYPE")
+out_subdir_tag = get_required_env("STITCH_OUTPUT_TAG")
 
 step_to_stitch = "images_corrected"  # Input subdirectory name
 subdir = "images_corrected/{}".format(track_type)  # Build path dynamically
 localtemp = "/tmp/FIJI_temp"  # Temporary directory
 
-# Grid stitching parameters - these rarely change
-rows = os.getenv("STITCH_ROWS", "2")
-columns = os.getenv("STITCH_COLUMNS", "2")
-size = os.getenv("STITCH_SIZE", "1480")
-overlap_pct = os.getenv("STITCH_OVERLAP", "10")
+# Grid stitching parameters
+rows = "2"  # Number of rows in the site grid
+columns = "2"  # Number of columns in the site grid
+size = "1480"  # Base size of input images (pixels)
+overlap_pct = "10"  # Percentage overlap between adjacent images
 
-# Tiling parameters - these rarely change
-tileperside = os.getenv("STITCH_TILES_PER_SIDE", "2")
-scalingstring = os.getenv("STITCH_SCALE", "1.99")
-round_or_square = "square"  # Always square for this workflow
-final_tile_size = "2960"  # Fixed for CellProfiler compatibility
-xoffset_tiles = "0"
-yoffset_tiles = "0"
-compress = "True"  # Always compress to save space
+# Tiling parameters
+tileperside = "2"  # Number of tiles to create per side when cropping
+scalingstring = "1.99"  # Scaling factor to apply to images
+round_or_square = "square"  # Shape of the well (square or round)
+final_tile_size = "2960"  # Final tile size after scaling (pixels)
+xoffset_tiles = "0"  # X offset for tile cropping
+yoffset_tiles = "0"  # Y offset for tile cropping
+compress = "True"  # Whether to compress output TIFF files
 
 # Channel information
-channame = os.getenv("STITCH_CHANNEL", "DNA")  # Default to DNA channel
+channame = "DNA"  # Target channel name for processing (always DNA for this workflow)
 
 # Unused parameters (kept for compatibility)
 imperwell = "unused"
@@ -114,8 +120,7 @@ logger.info("=== Configuration ===")
 logger.info("Input: {}".format(os.path.join(input_file_location, subdir)))
 logger.info("Track type: {}".format(track_type))
 logger.info("Channel: {}".format(channame))
-if os.getenv("STITCH_ROWS") or os.getenv("STITCH_COLUMNS"):
-    logger.info("Grid: {}x{} with {}% overlap".format(rows, columns, overlap_pct))
+logger.info("Grid: {}x{} with {}% overlap".format(rows, columns, overlap_pct))
 
 plugin = LociExporter()
 

@@ -286,7 +286,6 @@ run_stitchcrop_pipeline() {
   local cmd="STITCH_INPUT_BASE=\"${REPRODUCE_DIR}/Source1/Batch1\" \
 STITCH_TRACK_TYPE=\"${track_type}\" \
 STITCH_OUTPUT_TAG=\"$(apply_pattern "$output_pattern")\" \
-STITCH_CHANNEL=\"DNA\" \
 STITCH_AUTORUN=\"true\" \
 /opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/${script_name}"
 

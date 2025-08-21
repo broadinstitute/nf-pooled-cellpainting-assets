@@ -9,7 +9,14 @@
 #
 # Usage:
 #   ./run_pcpip.sh
+#   PIPELINE_STEP=1 ./run_pcpip.sh
+#   PIPELINE_STEP=2 ./run_pcpip.sh
+#   PIPELINE_STEP=4 ./run_pcpip.sh
+#   PIPELINE_STEP="1,2,3" ./run_pcpip.sh
 #
+
+# Pipeline step to run (required - no default)
+PIPELINE_STEP=${PIPELINE_STEP}
 
 # Docker-based paths
 LOAD_DATA_DIR="/app/data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
@@ -25,9 +32,11 @@ LOG_DIR="${REPRODUCE_DIR}/logs/${TIMESTAMP}"
 mkdir -p ${LOG_DIR}
 
 PLATE=Plate1
-WELLS=("A1" "A2" "B1")
+# WELLS=("A1" "A2" "B1")
+WELLS=("A1")
 SITES=(0 1)
-CYCLES=(1 2 3)
+# CYCLES=(1 2 3)
+CYCLES=(1 2)
 
 # Define all pipeline configurations
 declare -A PIPELINE_CONFIG=(
@@ -215,57 +224,158 @@ run_pipeline() {
   run_with_logging "$cmd" "$log_file" "$run_background"
 }
 
-# Pipeline execution sequence
+# Function to run stitching pipeline (calls ImageJ help for now)
+run_stitch_pipeline() {
+  local track=$1  # "cp" or "bc"
+  local log_file="${LOG_DIR}/pipeline_${track}_stitch.log"
+
+  echo "Running ${track^^} stitching (ImageJ test), logging to: $log_file"
+
+  # Call ImageJ help to test Fiji container integration
+  {
+    echo "===================================================="
+    echo "  STARTED: $(date)"
+    echo "  PIPELINE: ${track^^} Stitching (Pipeline 4/8)"
+    echo "  STATUS: Testing ImageJ/Fiji integration"
+    echo "===================================================="
+    echo ""
+    echo "Input: images_corrected/${track}/"
+    echo "Output: images_stitched/${track}/"
+    echo ""
+    echo "Calling ImageJ help to test Fiji container:"
+    echo ""
+
+    # Test ImageJ call - this will need to be run from Fiji container
+    if command -v ImageJ-linux64 >/dev/null 2>&1; then
+      echo "ImageJ found, running help:"
+      ImageJ-linux64 --help 2>&1 || echo "ImageJ help command failed"
+    elif command -v fiji >/dev/null 2>&1; then
+      echo "Fiji found, running help:"
+      fiji --help 2>&1 || echo "Fiji help command failed"
+    else
+      echo "Neither ImageJ nor Fiji found in this container"
+      echo "This function should be called from the Fiji container"
+    fi
+
+    echo ""
+    echo "===================================================="
+    echo "  COMPLETED: $(date)"
+    echo "  EXIT CODE: 0"
+    echo "===================================================="
+  } > "$log_file"
+}
+
+# Function to check if a pipeline step should run
+should_run_step() {
+  local step=$1
+
+  # Check if PIPELINE_STEP is set
+  if [[ -z "$PIPELINE_STEP" ]]; then
+    echo "ERROR: PIPELINE_STEP environment variable is required"
+    echo "Usage: PIPELINE_STEP=1 docker-compose run --rm cellprofiler"
+    echo "       PIPELINE_STEP=\"1,2,3\" docker-compose run --rm cellprofiler"
+    exit 1
+  fi
+
+  # Check if step is in the comma-separated list
+  IFS=',' read -ra STEPS <<< "$PIPELINE_STEP"
+  for s in "${STEPS[@]}"; do
+    if [[ "$s" == "$step" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# Pipeline execution sequence based on PIPELINE_STEP
 # --------------------------
 
+echo "Pipeline steps to run: $PIPELINE_STEP"
+
 # 1_CP_Illum - PLATE only
-PIPELINE=1
-run_pipeline $PIPELINE
+if should_run_step 1; then
+  echo "Running Pipeline 1: CP_Illum"
+  PIPELINE=1
+  run_pipeline $PIPELINE
+fi
 
 # 2_CP_Apply_Illum - PLATE, WELL
-PIPELINE=2
-for WELL in "${WELLS[@]}"; do
-    run_pipeline $PIPELINE
-done
-wait
+if should_run_step 2; then
+  echo "Running Pipeline 2: CP_Apply_Illum"
+  PIPELINE=2
+  for WELL in "${WELLS[@]}"; do
+      run_pipeline $PIPELINE
+  done
+  wait
+fi
 
 # 3_CP_SegmentationCheck - PLATE, WELL
-PIPELINE=3
-for WELL in "${WELLS[@]}"; do
-    run_pipeline $PIPELINE
-done
-wait
+if should_run_step 3; then
+  echo "Running Pipeline 3: CP_SegmentationCheck"
+  PIPELINE=3
+  for WELL in "${WELLS[@]}"; do
+      run_pipeline $PIPELINE
+  done
+  wait
+fi
+
+# 4_CP_StitchCrop - NEW
+if should_run_step 4; then
+  echo "Running Pipeline 4: CP_StitchCrop"
+  run_stitch_pipeline "cp"
+fi
 
 # 5_BC_Illum - PLATE, CYCLE
-PIPELINE=5
-for CYCLE in "${CYCLES[@]}"; do
-    run_pipeline $PIPELINE
-done
-wait
+if should_run_step 5; then
+  echo "Running Pipeline 5: BC_Illum"
+  PIPELINE=5
+  for CYCLE in "${CYCLES[@]}"; do
+      run_pipeline $PIPELINE
+  done
+  wait
+fi
 
 # 6_BC_Apply_Illum - PLATE, WELL, SITE
-PIPELINE=6
-for WELL in "${WELLS[@]}"; do
-    for SITE in "${SITES[@]}"; do
-        run_pipeline $PIPELINE
-    done
-done
-wait
+if should_run_step 6; then
+  echo "Running Pipeline 6: BC_Apply_Illum"
+  PIPELINE=6
+  for WELL in "${WELLS[@]}"; do
+      for SITE in "${SITES[@]}"; do
+          run_pipeline $PIPELINE
+      done
+  done
+  wait
+fi
 
 # 7_BC_Preprocess - PLATE, WELL, SITE
-PIPELINE=7
-for WELL in "${WELLS[@]}"; do
-    for SITE in "${SITES[@]}"; do
-        run_pipeline $PIPELINE
-    done
-done
-wait
+if should_run_step 7; then
+  echo "Running Pipeline 7: BC_Preprocess"
+  PIPELINE=7
+  for WELL in "${WELLS[@]}"; do
+      for SITE in "${SITES[@]}"; do
+          run_pipeline $PIPELINE
+      done
+  done
+  wait
+fi
+
+# 8_BC_StitchCrop - NEW
+if should_run_step 8; then
+  echo "Running Pipeline 8: BC_StitchCrop"
+  run_stitch_pipeline "bc"
+fi
 
 # 9_Analysis - PLATE, WELL, SITE
-PIPELINE=9
-for WELL in "${WELLS[@]}"; do
-    for SITE in "${SITES[@]}"; do
-        run_pipeline $PIPELINE
-    done
-done
-wait
+if should_run_step 9; then
+  echo "Running Pipeline 9: Analysis"
+  PIPELINE=9
+  for WELL in "${WELLS[@]}"; do
+      for SITE in "${SITES[@]}"; do
+          run_pipeline $PIPELINE
+      done
+  done
+  wait
+fi
+
+echo "=== Pipeline execution complete ==="

@@ -1,9 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(chmod:*)",
+      "Bash(PIPELINE_STEP=4 docker-compose run --rm cellprofiler)",
+      "Bash(PIPELINE_STEP=4 docker-compose run --rm fiji bash /app/scripts/run_pcpip.sh)",
+      "Bash(docker search:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/shsingh/Documents/GitHub/starrynight/docs/user/",
+      "/Users/shsingh/Documents/GitHub/starrynight/utils/pcpip-stitchcrop/"
+    ]
   }
 }

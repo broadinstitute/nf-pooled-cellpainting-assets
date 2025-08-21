@@ -13,6 +13,7 @@ services:
     command: ["bash", "run_pcpip.sh"]
     environment:
       - DISPLAY=
+      - PIPELINE_STEP=${PIPELINE_STEP}
     stdin_open: true
     tty: true
 
@@ -34,3 +35,17 @@ services:
     tty: true
     profiles:
       - interactive
+
+  fiji:
+    image: fiji/fiji:latest
+    platform: linux/amd64
+    container_name: pcpip-fiji
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./data:/app/data:rw
+    working_dir: /app/scripts
+    environment:
+      - DISPLAY=
+      - PIPELINE_STEP=${PIPELINE_STEP}
+    stdin_open: true
+    tty: true

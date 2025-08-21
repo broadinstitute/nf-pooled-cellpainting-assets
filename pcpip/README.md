@@ -55,10 +55,29 @@ aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --n
 
 ### 1. Run the Pipeline
 
-Execute the complete PCPIP pipeline:
+Execute specific pipeline steps using the `PIPELINE_STEP` environment variable:
+
 ```bash
-docker-compose up cellprofiler
+# Run individual steps
+PIPELINE_STEP=1 docker-compose run --rm cellprofiler
+PIPELINE_STEP=4 docker-compose run --rm cellprofiler  # CP stitching (placeholder)
+PIPELINE_STEP=8 docker-compose run --rm cellprofiler  # BC stitching (placeholder)
+PIPELINE_STEP=9 docker-compose run --rm cellprofiler
+
+# Run multiple steps
+PIPELINE_STEP="1,2,3" docker-compose run --rm cellprofiler
+PIPELINE_STEP="4,8" docker-compose run --rm cellprofiler
+
+# Run by track
+PIPELINE_STEP="1,2,3" docker-compose run --rm cellprofiler     # CP core
+PIPELINE_STEP="5,6,7" docker-compose run --rm cellprofiler     # BC core
+PIPELINE_STEP=4 docker-compose run --rm cellprofiler           # CP stitching
+PIPELINE_STEP=8 docker-compose run --rm cellprofiler           # BC stitching
+PIPELINE_STEP=9 docker-compose run --rm cellprofiler           # Analysis
 ```
+
+> [!NOTE]
+> `PIPELINE_STEP` is required - there is no default "run all" option since steps 4 and 8 will eventually use a separate Fiji container.
 
 ### 2. Interactive Shell (Optional)
 
@@ -71,15 +90,37 @@ docker-compose run --rm cellprofiler-shell
 
 All outputs are generated in `data/` - corrected images, analysis results, and logs in timestamped subdirectories.
 
+### 4. Cleanup
+
+```bash
+base_dir=data/Source1
+
+dirs=(
+    Batch1/illum
+    Batch1/images_aligned
+    Batch1/images_corrected
+    Batch1/images_segmentation
+    workspace/analysis
+)
+
+rm -rf -- "${dirs[@]/#/${base_dir}/}"
+```
+
 ## Pipeline Overview
 
-Runs 7 CellProfiler pipelines in sequence:
+Runs 9 pipelines in sequence:
 
-1. **CP_Illum** → **CP_Apply_Illum** → **CP_SegmentationCheck**
-2. **BC_Illum** → **BC_Apply_Illum** → **BC_Preprocess**
-3. **Analysis** (final feature extraction)
+1. **CP_Illum** (Pipeline 1) - Calculate CP illumination correction
+2. **CP_Apply_Illum** (Pipeline 2) - Apply CP illumination correction
+3. **CP_SegmentationCheck** (Pipeline 3) - Validate CP segmentation
+4. **CP_StitchCrop** (Pipeline 4) - Stitch CP images *(placeholder)*
+5. **BC_Illum** (Pipeline 5) - Calculate BC illumination correction
+6. **BC_Apply_Illum** (Pipeline 6) - Apply BC illumination correction
+7. **BC_Preprocess** (Pipeline 7) - Preprocess barcoding images
+8. **BC_StitchCrop** (Pipeline 8) - Stitch BC images *(placeholder)*
+9. **Analysis** (Pipeline 9) - Final feature extraction
 
-*Configure in `scripts/run_pcpip.sh` as needed.*
+*Steps 4 and 8 are currently no-op placeholders for future ImageJ/Fiji integration.*
 
 ## Troubleshooting
 

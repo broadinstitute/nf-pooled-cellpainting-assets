@@ -44,6 +44,8 @@ services:
       - ./scripts:/app/scripts:ro
       - ./data:/app/data:rw
     working_dir: /app/scripts
+    entrypoint: []
+    command: ["bash", "run_pcpip.sh"]
     environment:
       - DISPLAY=
       - PIPELINE_STEP=${PIPELINE_STEP}

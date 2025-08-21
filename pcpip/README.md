@@ -60,24 +60,24 @@ Execute specific pipeline steps using the `PIPELINE_STEP` environment variable:
 ```bash
 # Run individual steps
 PIPELINE_STEP=1 docker-compose run --rm cellprofiler
-PIPELINE_STEP=4 docker-compose run --rm cellprofiler  # CP stitching (placeholder)
-PIPELINE_STEP=8 docker-compose run --rm cellprofiler  # BC stitching (placeholder)
+PIPELINE_STEP=4 docker-compose run --rm fiji          # CP stitching
+PIPELINE_STEP=8 docker-compose run --rm fiji          # BC stitching
 PIPELINE_STEP=9 docker-compose run --rm cellprofiler
 
-# Run multiple steps
+# Run multiple steps (CellProfiler only)
 PIPELINE_STEP="1,2,3" docker-compose run --rm cellprofiler
-PIPELINE_STEP="4,8" docker-compose run --rm cellprofiler
+PIPELINE_STEP="5,6,7" docker-compose run --rm cellprofiler
 
 # Run by track
 PIPELINE_STEP="1,2,3" docker-compose run --rm cellprofiler     # CP core
 PIPELINE_STEP="5,6,7" docker-compose run --rm cellprofiler     # BC core
-PIPELINE_STEP=4 docker-compose run --rm cellprofiler           # CP stitching
-PIPELINE_STEP=8 docker-compose run --rm cellprofiler           # BC stitching
+PIPELINE_STEP=4 docker-compose run --rm fiji                   # CP stitching
+PIPELINE_STEP=8 docker-compose run --rm fiji                   # BC stitching
 PIPELINE_STEP=9 docker-compose run --rm cellprofiler           # Analysis
 ```
 
 > [!NOTE]
-> `PIPELINE_STEP` is required - there is no default "run all" option since steps 4 and 8 will eventually use a separate Fiji container.
+> `PIPELINE_STEP` is required - there is no default "run all" option since steps 4 and 8 use a separate Fiji container.
 
 ### 2. Interactive Shell (Optional)
 
@@ -113,14 +113,14 @@ Runs 9 pipelines in sequence:
 1. **CP_Illum** (Pipeline 1) - Calculate CP illumination correction
 2. **CP_Apply_Illum** (Pipeline 2) - Apply CP illumination correction
 3. **CP_SegmentationCheck** (Pipeline 3) - Validate CP segmentation
-4. **CP_StitchCrop** (Pipeline 4) - Stitch CP images *(placeholder)*
+4. **CP_StitchCrop** (Pipeline 4) - Stitch CP images *(Fiji/ImageJ)*
 5. **BC_Illum** (Pipeline 5) - Calculate BC illumination correction
 6. **BC_Apply_Illum** (Pipeline 6) - Apply BC illumination correction
 7. **BC_Preprocess** (Pipeline 7) - Preprocess barcoding images
-8. **BC_StitchCrop** (Pipeline 8) - Stitch BC images *(placeholder)*
+8. **BC_StitchCrop** (Pipeline 8) - Stitch BC images *(Fiji/ImageJ)*
 9. **Analysis** (Pipeline 9) - Final feature extraction
 
-*Steps 4 and 8 are currently no-op placeholders for future ImageJ/Fiji integration.*
+*Steps 4 and 8 use ImageJ/Fiji for stitching and cropping operations.*
 
 ## Troubleshooting
 

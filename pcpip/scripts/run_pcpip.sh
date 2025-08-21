@@ -38,7 +38,7 @@ SITES=(0 1)
 # CYCLES=(1 2 3)
 CYCLES=(1 2)
 
-# Define all pipeline configurations
+# Define CellProfiler pipeline configurations
 declare -A PIPELINE_CONFIG=(
   # Pipeline file names
   [1,file]="ref_1_CP_Illum.cppipe"
@@ -120,6 +120,37 @@ declare -A PIPELINE_CONFIG=(
   [6,plugins]="false"
   [7,plugins]="true"
   [9,plugins]="true"
+)
+
+# Define Fiji/ImageJ stitching pipeline configurations
+declare -A STITCH_CONFIG=(
+  # Input directory patterns (relative to /app/data/Source1/Batch1/)
+  [4,input]="images_corrected/painting/PLATE-WELL"
+  [8,input]="images_corrected/barcoding/PLATE-WELL-SITE"
+
+  # Output directory patterns - all 3 outputs per pipeline
+  [4,output_stitched]="images_corrected_stitched/cellpainting/PLATE/PLATE_WELL"
+  [4,output_cropped]="images_corrected_cropped/cellpainting/PLATE/PLATE_WELL"
+  [4,output_downsampled]="images_corrected_stitched_10X/cellpainting/PLATE/PLATE_WELL"
+  [8,output_stitched]="images_corrected_stitched/barcoding/PLATE/PLATE_WELL_SITE"
+  [8,output_cropped]="images_corrected_cropped/barcoding/PLATE/PLATE_WELL_SITE"
+  [8,output_downsampled]="images_corrected_stitched_10X/barcoding/PLATE/PLATE_WELL_SITE"
+
+  # Log filename patterns
+  [4,log]="pipeline4_PLATE_WELL"
+  [8,log]="pipeline8_PLATE_WELL_SITE"
+
+  # Required parameters (comma-separated)
+  [4,params]="PLATE,WELL"
+  [8,params]="PLATE,WELL,SITE"
+
+  # Script to run (single parameterized script)
+  [4,script]="stitch_crop.py"
+  [8,script]="stitch_crop.py"
+
+  # Run in background (false for sequential execution)
+  [4,background]="false"
+  [8,background]="false"
 )
 
 # Function to apply variable substitution to a pattern
@@ -224,45 +255,40 @@ run_pipeline() {
   run_with_logging "$cmd" "$log_file" "$run_background"
 }
 
-# Function to run stitching pipeline (calls ImageJ help for now)
-run_stitch_pipeline() {
-  local track=$1  # "cp" or "bc"
-  local log_file="${LOG_DIR}/pipeline_${track}_stitch.log"
+# Function to run stitch-crop pipeline using STITCH_CONFIG
+run_stitchcrop_pipeline() {
+  local pipeline=$1  # 4 or 8
+  local required_params=${STITCH_CONFIG[$pipeline,params]}
+  local run_background=${STITCH_CONFIG[$pipeline,background]}
+  local script_name=${STITCH_CONFIG[$pipeline,script]}
 
-  echo "Running ${track^^} stitching (ImageJ test), logging to: $log_file"
+  # Get log filename using pattern substitution
+  local log_pattern=${STITCH_CONFIG[$pipeline,log]}
+  local log_file="${LOG_DIR}/$(apply_pattern "$log_pattern").log"
 
-  # Call ImageJ help to test Fiji container integration
-  {
-    echo "===================================================="
-    echo "  STARTED: $(date)"
-    echo "  PIPELINE: ${track^^} Stitching (Pipeline 4/8)"
-    echo "  STATUS: Testing ImageJ/Fiji integration"
-    echo "===================================================="
-    echo ""
-    echo "Input: images_corrected/${track}/"
-    echo "Output: images_stitched/${track}/"
-    echo ""
-    echo "Calling ImageJ help to test Fiji container:"
-    echo ""
+  echo "Running Pipeline $pipeline (Stitch-Crop), logging to: $log_file"
 
-    # Test ImageJ call - this will need to be run from Fiji container
-    if command -v ImageJ-linux64 >/dev/null 2>&1; then
-      echo "ImageJ found, running help:"
-      ImageJ-linux64 --help 2>&1 || echo "ImageJ help command failed"
-    elif command -v fiji >/dev/null 2>&1; then
-      echo "Fiji found, running help:"
-      fiji --help 2>&1 || echo "Fiji help command failed"
-    else
-      echo "Neither ImageJ nor Fiji found in this container"
-      echo "This function should be called from the Fiji container"
-    fi
+  # Determine track type and output pattern based on pipeline
+  local track_type=""
+  local output_pattern=""
+  if [[ "$pipeline" == "4" ]]; then
+    track_type="painting"
+    output_pattern="PLATE_WELL"
+  elif [[ "$pipeline" == "8" ]]; then
+    track_type="barcoding"
+    output_pattern="PLATE_WELL_SITE"
+  fi
 
-    echo ""
-    echo "===================================================="
-    echo "  COMPLETED: $(date)"
-    echo "  EXIT CODE: 0"
-    echo "===================================================="
-  } > "$log_file"
+  # Set environment variables for the Python script to read
+  local cmd="STITCH_INPUT_BASE=\"${REPRODUCE_DIR}/Source1/Batch1\" \
+STITCH_TRACK_TYPE=\"${track_type}\" \
+STITCH_OUTPUT_TAG=\"$(apply_pattern "$output_pattern")\" \
+STITCH_CHANNEL=\"DNA\" \
+STITCH_AUTORUN=\"true\" \
+/opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/${script_name}"
+
+  # Run with logging
+  run_with_logging "$cmd" "$log_file" "$run_background"
 }
 
 # Function to check if a pipeline step should run
@@ -323,7 +349,11 @@ fi
 # 4_CP_StitchCrop - NEW
 if should_run_step 4; then
   echo "Running Pipeline 4: CP_StitchCrop"
-  run_stitch_pipeline "cp"
+  PIPELINE=4
+  for WELL in "${WELLS[@]}"; do
+      run_stitchcrop_pipeline $PIPELINE
+  done
+  wait
 fi
 
 # 5_BC_Illum - PLATE, CYCLE
@@ -363,7 +393,13 @@ fi
 # 8_BC_StitchCrop - NEW
 if should_run_step 8; then
   echo "Running Pipeline 8: BC_StitchCrop"
-  run_stitch_pipeline "bc"
+  PIPELINE=8
+  for WELL in "${WELLS[@]}"; do
+      for SITE in "${SITES[@]}"; do
+          run_stitchcrop_pipeline $PIPELINE
+      done
+  done
+  wait
 fi
 
 # 9_Analysis - PLATE, WELL, SITE

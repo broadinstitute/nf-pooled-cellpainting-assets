@@ -71,7 +71,7 @@ def get_required_env(var_name):
     """Get a required environment variable or exit."""
     value = os.getenv(var_name)
     if not value:
-        logger.error(f"{var_name} environment variable is required")
+        logger.error("{} environment variable is required".format(var_name))
         sys.exit(1)
     return value
 

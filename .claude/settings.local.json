@@ -16,7 +16,8 @@
       "Bash(docker inspect:*)",
       "WebSearch",
       "Bash(grep:*)",
-      "Bash(docker compose run:*)"
+      "Bash(docker compose run:*)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": [],

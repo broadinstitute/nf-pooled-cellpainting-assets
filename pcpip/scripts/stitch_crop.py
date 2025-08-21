@@ -31,9 +31,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Handle command-line arguments and environment variables for autorun
+# Handle command-line arguments
 autorun = False
-# Check command line arguments first
 if len(sys.argv) > 1:
     if sys.argv[1].lower() in ("-y", "--yes", "yes", "auto"):
         autorun = True
@@ -67,47 +66,37 @@ def confirm_continue(message="Continue to the next step?"):
     return response == "y" or response == "yes"
 
 
-# Configuration parameters
-# Input/output directories - configurable via environment variables (required)
-input_file_location = os.getenv("STITCH_INPUT_BASE")
-if not input_file_location:
-    logger.error("STITCH_INPUT_BASE environment variable is required")
-    sys.exit(1)
+# Configuration parameters with sensible defaults
+# Override any of these with environment variables if needed
 
-track_type = os.getenv("STITCH_TRACK_TYPE")
-if not track_type:
-    logger.error("STITCH_TRACK_TYPE environment variable is required")
-    sys.exit(1)
-
-out_subdir_tag = os.getenv("STITCH_OUTPUT_TAG")
-if not out_subdir_tag:
-    logger.error("STITCH_OUTPUT_TAG environment variable is required")
-    sys.exit(1)
+# Input/output directories
+input_file_location = os.getenv(
+    "STITCH_INPUT_BASE", "/app/data"
+)  # Default to container path
+track_type = os.getenv("STITCH_TRACK_TYPE", "painting")  # Default to painting images
+out_subdir_tag = os.getenv("STITCH_OUTPUT_TAG", "Plate_Well")  # Default output tag
 
 step_to_stitch = "images_corrected"  # Input subdirectory name
-subdir = "images_corrected/" + track_type  # Specific input directory with images
-localtemp = "/tmp/FIJI_temp"  # Temporary directory inside container
+subdir = "images_corrected/{}".format(track_type)  # Build path dynamically
+localtemp = "/tmp/FIJI_temp"  # Temporary directory
 
-# Grid stitching parameters
-rows = "2"  # Number of rows in the site grid
-columns = "2"  # Number of columns in the site grid
-size = "1480"  # Base size of input images (pixels)
-overlap_pct = "10"  # Percentage overlap between adjacent images
+# Grid stitching parameters - these rarely change
+rows = os.getenv("STITCH_ROWS", "2")
+columns = os.getenv("STITCH_COLUMNS", "2")
+size = os.getenv("STITCH_SIZE", "1480")
+overlap_pct = os.getenv("STITCH_OVERLAP", "10")
 
-# Tiling parameters
-tileperside = "2"  # Number of tiles to create per side when cropping
-scalingstring = "1.99"  # Scaling factor to apply to images
-round_or_square = "square"  # Shape of the well (square or round)
-final_tile_size = "2960"  # Final tile size after scaling (pixels)
-xoffset_tiles = "0"  # X offset for tile cropping
-yoffset_tiles = "0"  # Y offset for tile cropping
-compress = "True"  # Whether to compress output TIFF files
+# Tiling parameters - these rarely change
+tileperside = os.getenv("STITCH_TILES_PER_SIDE", "2")
+scalingstring = os.getenv("STITCH_SCALE", "1.99")
+round_or_square = "square"  # Always square for this workflow
+final_tile_size = "2960"  # Fixed for CellProfiler compatibility
+xoffset_tiles = "0"
+yoffset_tiles = "0"
+compress = "True"  # Always compress to save space
 
 # Channel information
-channame = os.getenv("STITCH_CHANNEL")
-if not channame:
-    logger.error("STITCH_CHANNEL environment variable is required")
-    sys.exit(1)
+channame = os.getenv("STITCH_CHANNEL", "DNA")  # Default to DNA channel
 
 # Unused parameters (kept for compatibility)
 imperwell = "unused"
@@ -120,15 +109,13 @@ quarter_if_round = "unused"
 
 top_outfolder = input_file_location
 
-# Log the configuration being used
-logger.info("=== STITCH CROP CONFIGURATION ===")
-logger.info("Input base: " + str(input_file_location))
-logger.info("Track type: " + str(track_type))
-logger.info("Input subdir: " + str(subdir))
-logger.info("Output tag: " + str(out_subdir_tag))
-logger.info("Channel: " + str(channame))
-logger.info("Auto mode: " + str(autorun))
-logger.info("=================================")
+# Log configuration (only if different from defaults)
+logger.info("=== Configuration ===")
+logger.info("Input: {}".format(os.path.join(input_file_location, subdir)))
+logger.info("Track type: {}".format(track_type))
+logger.info("Channel: {}".format(channame))
+if os.getenv("STITCH_ROWS") or os.getenv("STITCH_COLUMNS"):
+    logger.info("Grid: {}x{} with {}% overlap".format(rows, columns, overlap_pct))
 
 plugin = LociExporter()
 
@@ -161,14 +148,7 @@ def savefile(im, imname, plugin, compress="false"):
     """
     attemptcount = 0
     imname = tiffextend(imname)
-    logger.info(
-        "Saving "
-        + str(imname)
-        + ", width="
-        + str(im.width)
-        + ", height="
-        + str(im.height)
-    )
+    logger.info("Saving {}, width={}, height={}".format(imname, im.width, im.height))
 
     # Simple save without compression
     if compress.lower() != "true":
@@ -192,9 +172,9 @@ def savefile(im, imname, plugin, compress="false"):
 
 
 # STEP 1: Create directory structure for output files
-logger.info("Top output folder: " + str(top_outfolder))
+logger.info("Top output folder: {}".format(top_outfolder))
 if not os.path.exists(top_outfolder):
-    logger.info("Creating top output folder: " + str(top_outfolder))
+    logger.info("Creating top output folder: {}".format(top_outfolder))
     os.mkdir(top_outfolder)
 
 # Define and create the parent folders where the images will be output
@@ -216,28 +196,29 @@ logger.info(
 
 # Create parent directories if they don't exist (including intermediate track directories)
 if not os.path.exists(base_stitched):
-    logger.info("Creating base stitched folder: {}".format(base_stitched))
     os.mkdir(base_stitched)
 if not os.path.exists(base_cropped):
-    logger.info("Creating base cropped folder: {}".format(base_cropped))
     os.mkdir(base_cropped)
 if not os.path.exists(base_downsampled):
-    logger.info("Creating base downsampled folder: {}".format(base_downsampled))
     os.mkdir(base_downsampled)
 
 if not os.path.exists(outfolder):
-    logger.info("Creating track-specific output folder: {}".format(outfolder))
     os.mkdir(outfolder)
 if not os.path.exists(tile_outdir):
-    logger.info("Creating track-specific tile output folder: {}".format(tile_outdir))
     os.mkdir(tile_outdir)
 if not os.path.exists(downsample_outdir):
-    logger.info(
-        "Creating track-specific downsample output folder: {}".format(downsample_outdir)
-    )
     os.mkdir(downsample_outdir)
 
-# Placeholder - well directories will be created after discovering actual well names
+# Define and create the batch-specific subfolders where the images will be output
+out_subdir = os.path.join(outfolder, out_subdir_tag)
+tile_subdir = os.path.join(tile_outdir, out_subdir_tag)
+downsample_subdir = os.path.join(downsample_outdir, out_subdir_tag)
+if not os.path.exists(tile_subdir):
+    os.mkdir(tile_subdir)
+if not os.path.exists(downsample_subdir):
+    os.mkdir(downsample_subdir)
+if not os.path.exists(out_subdir):
+    os.mkdir(out_subdir)
 
 # STEP 2: Prepare input directory and files
 subdir = os.path.join(input_file_location, subdir)
@@ -249,54 +230,6 @@ logger.info("Input subdirectory: {}".format(subdir))
 logger.info("Checking if directory exists: {}".format(subdir))
 a = os.listdir(subdir)
 logger.info("Contents of {}: {}".format(subdir, a))
-
-# Discover the actual well directory name from input (e.g., "Plate1-A1" or "Plate1-A1-0")
-actual_well_dirname = None
-for x in a:
-    if os.path.isdir(os.path.join(subdir, x)):
-        actual_well_dirname = x
-        logger.info("Found well directory: {}".format(actual_well_dirname))
-        break
-
-if not actual_well_dirname:
-    logger.error("No well directory found in input")
-    sys.exit(1)
-
-# For barcoding track, remove the site suffix from the directory name
-# (e.g., "Plate1-A1-0" -> "Plate1-A1")
-output_dirname = actual_well_dirname
-if track_type == "barcoding" and "-" in actual_well_dirname:
-    # Check if the last part after the final dash is a number (site)
-    parts = actual_well_dirname.rsplit("-", 1)
-    if len(parts) == 2 and parts[1].isdigit():
-        output_dirname = parts[0]
-        logger.info(
-            "Removed site suffix for barcoding: {} -> {}".format(
-                actual_well_dirname, output_dirname
-            )
-        )
-
-# Create well-specific output directories using the cleaned name
-out_subdir = os.path.join(outfolder, output_dirname)
-tile_subdir = os.path.join(tile_outdir, output_dirname)
-downsample_subdir = os.path.join(downsample_outdir, output_dirname)
-
-logger.info("Creating well-specific directories using name: {}".format(output_dirname))
-logger.info(
-    "Well directories: \n - Stitched: {}\n - Cropped: {}\n - Downsampled: {}".format(
-        out_subdir, tile_subdir, downsample_subdir
-    )
-)
-
-if not os.path.exists(out_subdir):
-    logger.info("Creating well stitched directory: {}".format(out_subdir))
-    os.mkdir(out_subdir)
-if not os.path.exists(tile_subdir):
-    logger.info("Creating well cropped directory: {}".format(tile_subdir))
-    os.mkdir(tile_subdir)
-if not os.path.exists(downsample_subdir):
-    logger.info("Creating well downsampled directory: {}".format(downsample_subdir))
-    os.mkdir(downsample_subdir)
 
 # Flatten any nested directories - create symlinks from subdirectories to main directory
 for x in a:

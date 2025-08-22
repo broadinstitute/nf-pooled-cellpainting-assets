@@ -31,17 +31,71 @@ PIPELINE_STEP=9 docker-compose run --rm cellprofiler        # Analysis (needs 16
 <details>
 <summary>Pipeline Details</summary>
 
-| Step | Name                 | Container    | Description                                |
-| ---- | -------------------- | ------------ | ------------------------------------------ |
-| 1    | CP_Illum             | CellProfiler | Calculate painting illumination correction |
-| 2    | CP_Apply_Illum       | CellProfiler | Apply painting illumination correction     |
-| 3    | CP_SegmentationCheck | CellProfiler | Validate cell segmentation                 |
-| 4    | CP_StitchCrop        | Fiji         | Stitch & crop painting images              |
-| 5    | BC_Illum             | CellProfiler | Calculate barcode illumination correction  |
-| 6    | BC_Apply_Illum       | CellProfiler | Apply barcode illumination correction      |
-| 7    | BC_Preprocess        | CellProfiler | Preprocess barcode images with plugins     |
-| 8    | BC_StitchCrop        | Fiji         | Stitch & crop barcode images               |
-| 9    | Analysis             | CellProfiler | Feature extraction from cropped tiles      |
+
+```mermaid
+flowchart TD
+    %% Main pipelines with detailed descriptions
+    subgraph "Cell Painting Track"
+        PCP1["PCP-1-CP-IllumCorr
+        Calculate illum functions"] -->
+        PCP2["PCP-2-CP-ApplyIllum
+        Apply correction
+        Segment cells
+        Get thresholds"] -->
+        PCP3["PCP-3-CP-SegmentCheck
+        Verify segmentation quality
+        on subset of images"]
+        PCP3 --> PCP4["PCP-4-CP-Stitching
+        Stitch FOVs into whole-well
+        Crop into tiles"]
+    end
+
+    subgraph "Barcoding Track"
+        PCP5["PCP-5-BC-IllumCorr
+        Calculate illum functions"] -->
+        PCP6["PCP-6-BC-ApplyIllum
+        Apply correction
+        Align cycles"] -->
+        PCP7["PCP-7-BC-Preprocess
+        Compensate channels
+        Identify & call barcodes"] -->
+        PCP8["PCP-8-BC-Stitching
+        Stitch FOVs into whole-well
+        Crop into tiles
+        (ensure match to CP crops)"]
+    end
+
+    PCP4 & PCP8 --> PCP9["PCP-9-Analysis
+        Align CP & BC images
+        Segment cells
+        Measure features
+        Call barcodes
+        Measure QC"]
+
+    %% Troubleshooting/specialized pipelines
+    PCP8Y["PCP-8Y-BC-CheckAlignmentPostStitch
+    Validate alignment b/w
+    stitched CP & BC images"] -.-> PCP8
+    PCP8Z["PCP-8Z-StitchAlignedBarcoding
+    Stitch aligned images
+    (not corrected images)"] -.-> PCP8
+
+    PCP7A["PCP-7A-BC-PreprocessTroubleshoot
+    Specialized version with
+    additional diagnostics"] -.-> PCP7
+
+    PCP6A["PCP-6A-BC-ApplyIllum-DebrisMask
+    Alternative version that
+    identifies & masks debris"] -.-> PCP6
+
+    %% Processing platforms
+    classDef cellprofiler fill:#e6f3ff,stroke:#0066cc
+    classDef fiji fill:#e6ffe6,stroke:#009900
+
+    class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP7A,PCP8Y,PCP9,PCP6A cellprofiler
+    class PCP4,PCP8,PCP8Z fiji
+```
+
 </details>
 
 ## Reference

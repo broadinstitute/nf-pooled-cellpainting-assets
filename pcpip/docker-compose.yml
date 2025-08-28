@@ -1,6 +1,6 @@
 services:
   cellprofiler:
-    image: cellprofiler/cellprofiler:4.2.6
+    image: community.wave.seqera.io/library/cellprofiler:4.2.8--aff0a99749304a7f
     platform: linux/amd64
     container_name: pcpip-cellprofiler
     volumes:
@@ -13,13 +13,17 @@ services:
     command: ["bash", "run_pcpip.sh"]
     environment:
       - DISPLAY=
+      - JAVA_HOME=/opt/conda
+      - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
       - PIPELINE_STEP=${PIPELINE_STEP}
       - JAVA_OPTS=-Xmx2G
+      - JAVA_HOME=/opt/conda
+      - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
     stdin_open: true
     tty: true
 
   cellprofiler-shell:
-    image: cellprofiler/cellprofiler:4.2.6
+    image: community.wave.seqera.io/library/cellprofiler:4.2.8--aff0a99749304a7f
     platform: linux/amd64
     container_name: pcpip-cellprofiler-shell
     volumes:
@@ -32,6 +36,8 @@ services:
     command: ["bash"]
     environment:
       - DISPLAY=
+      - JAVA_HOME=/opt/conda
+      - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
     stdin_open: true
     tty: true
     profiles:
@@ -49,6 +55,8 @@ services:
     command: ["bash", "run_pcpip.sh"]
     environment:
       - DISPLAY=
+      - JAVA_HOME=/opt/conda
+      - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
       - PIPELINE_STEP=${PIPELINE_STEP}
     stdin_open: true
     tty: true
@@ -65,6 +73,8 @@ services:
     command: ["bash"]
     environment:
       - DISPLAY=
+      - JAVA_HOME=/opt/conda
+      - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
     stdin_open: true
     tty: true
     profiles:

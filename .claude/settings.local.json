@@ -17,7 +17,10 @@
       "WebSearch",
       "Bash(grep:*)",
       "Bash(docker compose run:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(md5sum:*)",
+      "WebFetch(domain:wave.seqera.io)",
+      "Bash(docker-compose run:*)"
     ],
     "deny": [],
     "ask": [],

@@ -379,6 +379,27 @@ if os.path.isdir(subdir):
 
         # STEP 5: Process each well
         for eachwell in welllist:
+            # Create well-specific output directories
+            # Use Plate-Well format (e.g., Plate1-A1) for directory names
+            well_dir_name = "{}-{}".format(
+                out_subdir_tag, eachwell
+            )  # e.g., "Plate1-A1"
+            well_out_subdir = os.path.join(outfolder, well_dir_name)
+            well_tile_subdir = os.path.join(tile_outdir, well_dir_name)
+            well_downsample_subdir = os.path.join(downsample_outdir, well_dir_name)
+
+            # Create directories if they don't exist
+            if not os.path.exists(well_out_subdir):
+                os.mkdir(well_out_subdir)
+            if not os.path.exists(well_tile_subdir):
+                os.mkdir(well_tile_subdir)
+            if not os.path.exists(well_downsample_subdir):
+                os.mkdir(well_downsample_subdir)
+
+            logger.info(
+                "Processing well {} - outputs to {}".format(eachwell, well_out_subdir)
+            )
+
             # Create the instructions for ImageJ's Grid/Collection stitching plugin
             # This defines how images will be stitched together
             standard_grid_instructions = [
@@ -419,8 +440,8 @@ if os.path.isdir(subdir):
                 if thissuffixnicename[0] == "_":
                     thissuffixnicename = thissuffixnicename[1:]
 
-                # Create a channel-specific subdirectory for tile outputs
-                tile_subdir_persuf = os.path.join(tile_subdir, thissuffixnicename)
+                # Create a channel-specific subdirectory for tile outputs within the well directory
+                tile_subdir_persuf = os.path.join(well_tile_subdir, thissuffixnicename)
                 if not os.path.exists(tile_subdir_persuf):
                     os.mkdir(tile_subdir_persuf)
 
@@ -495,17 +516,17 @@ if os.path.isdir(subdir):
                 # time.sleep(15)
                 im3 = IJ.getImage()
 
-                # STEP 10: Save the stitched image
+                # STEP 10: Save the stitched image to well-specific directory
                 savefile(
                     im3,
-                    os.path.join(out_subdir, fileoutname),
+                    os.path.join(well_out_subdir, fileoutname),
                     plugin,
                     compress=compress,
                 )
 
-                # Close all images and reopen the saved stitched image
+                # Close all images and reopen the saved stitched image from well-specific directory
                 IJ.run("Close All")
-                im = IJ.open(os.path.join(out_subdir, fileoutname))
+                im = IJ.open(os.path.join(well_out_subdir, fileoutname))
                 im = IJ.getImage()
 
                 # Log progress
@@ -546,9 +567,9 @@ if os.path.isdir(subdir):
                             compress=compress,
                         )
 
-                # Close all images and reopen the saved stitched image again
+                # Close all images and reopen the saved stitched image again from well-specific directory
                 IJ.run("Close All")
-                im = IJ.open(os.path.join(out_subdir, fileoutname))
+                im = IJ.open(os.path.join(well_out_subdir, fileoutname))
                 im = IJ.getImage()
 
                 # STEP 12: Create downsampled version for quality control
@@ -568,10 +589,10 @@ if os.path.isdir(subdir):
                 )
                 im_10 = IJ.getImage()
 
-                # Save the downsampled image
+                # Save the downsampled image to well-specific directory
                 savefile(
                     im_10,
-                    os.path.join(downsample_subdir, fileoutname),
+                    os.path.join(well_downsample_subdir, fileoutname),
                     plugin,
                     compress=compress,
                 )
@@ -599,6 +620,7 @@ else:
     logger.error("Could not find input directory {}".format(subdir))
 
 # STEP 13: Move the TileConfiguration.txt file to the output directory
+# Note: This file gets overwritten for each well, so we just keep the last one
 for eachlogfile in ["TileConfiguration.txt"]:
     try:
         os.rename(
@@ -607,7 +629,7 @@ for eachlogfile in ["TileConfiguration.txt"]:
         )
         logger.info("Moved {} to output directory".format(eachlogfile))
     except FileNotFoundError:
-        logger.error("Could not find TileConfiguration.txt in {}".format(subdir))
+        logger.warning("Could not find TileConfiguration.txt in {}".format(subdir))
         # Create an empty file if it doesn't exist (for testing purposes)
         if not os.path.exists(os.path.join(out_subdir, eachlogfile)):
             with open(os.path.join(out_subdir, eachlogfile), "w") as f:

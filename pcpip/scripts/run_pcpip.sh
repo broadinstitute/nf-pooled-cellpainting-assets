@@ -128,38 +128,20 @@ declare -A PIPELINE_CONFIG=(
 )
 
 # Define Fiji/ImageJ stitching pipeline configurations
+# Note: stitch_crop.py auto-discovers wells from the filesystem and processes ALL of them
+# Each well's output goes to a separate subdirectory (e.g., Plate1-A1/, Plate1-A2/)
 declare -A STITCH_CONFIG=(
-  # Input directory patterns (relative to /app/data/Source1/Batch1/)
-  [4,input]="images_corrected/painting/PLATE-WELL"
-  [8,input]="images_corrected/barcoding/PLATE-WELL"
-
-  # Output directory patterns - all 3 outputs per pipeline
-  [4,output_stitched]="images_corrected_stitched/painting/PLATE/PLATE-WELL"
-  [4,output_cropped]="images_corrected_cropped/painting/PLATE/PLATE-WELL"
-  [4,output_downsampled]="images_corrected_stitched_10X/painting/PLATE/PLATE-WELL"
-  [8,output_stitched]="images_corrected_stitched/barcoding/PLATE/PLATE-WELL"
-  [8,output_cropped]="images_corrected_cropped/barcoding/PLATE/PLATE-WELL"
-  [8,output_downsampled]="images_corrected_stitched_10X/barcoding/PLATE/PLATE-WELL"
-
-  # Track type for each pipeline
+  # Track type for each pipeline (actually used by stitch_crop.py)
   [4,track]="painting"
   [8,track]="barcoding"
 
-  # Output pattern for each pipeline
-  [4,output_pattern]="PLATE-WELL"
-  [8,output_pattern]="PLATE-WELL"
+  # Output subdirectory tag - base directory for all wells
+  [4,output_tag]="${PLATE}"
+  [8,output_tag]="${PLATE}"
 
   # Log filename patterns
-  [4,log]="pipeline4_PLATE_WELL"
-  [8,log]="pipeline8_PLATE_WELL"
-
-  # Required parameters (comma-separated)
-  [4,params]="PLATE,WELL"
-  [8,params]="PLATE,WELL"
-
-  # Script to run (single parameterized script)
-  [4,script]="stitch_crop.py"
-  [8,script]="stitch_crop.py"
+  [4,log]="pipeline4_painting_${PLATE}"
+  [8,log]="pipeline8_barcoding_${PLATE}"
 
   # Run in background (false for sequential execution)
   [4,background]="true"
@@ -312,29 +294,25 @@ run_pipeline() {
   run_with_logging "$cmd" "$log_file" "$run_background"
 }
 
-# Function to run stitch-crop pipeline using STITCH_CONFIG
+# Function to run stitch-crop pipeline
+# Note: This processes ALL wells found in the input directory
+# Each well gets its own output subdirectory (e.g., Plate1/A1/, Plate1/A2/)
 run_stitchcrop_pipeline() {
   local pipeline=$1  # 4 or 8
-  local required_params=${STITCH_CONFIG[$pipeline,params]}
   local run_background=${STITCH_CONFIG[$pipeline,background]}
-  local script_name=${STITCH_CONFIG[$pipeline,script]}
-
-  # Get log filename using pattern substitution
-  local log_pattern=${STITCH_CONFIG[$pipeline,log]}
-  local log_file="${LOG_DIR}/$(apply_pattern "$log_pattern").log"
-
-  echo "Running Pipeline $pipeline (Stitch-Crop), logging to: $log_file"
-
-  # Get track type and output pattern from STITCH_CONFIG
   local track_type=${STITCH_CONFIG[$pipeline,track]}
-  local output_pattern=${STITCH_CONFIG[$pipeline,output_pattern]}
+  local output_tag=${STITCH_CONFIG[$pipeline,output_tag]}
+  local log_file="${LOG_DIR}/${STITCH_CONFIG[$pipeline,log]}.log"
+
+  echo "Running Pipeline $pipeline (Stitch-Crop for ${track_type}), logging to: $log_file"
+  echo "Processing ALL wells found in ${track_type} directory - each to its own subdirectory"
 
   # Set environment variables for the Python script to read
   local cmd="STITCH_INPUT_BASE=\"${REPRODUCE_DIR}/Source1/Batch1\" \
 STITCH_TRACK_TYPE=\"${track_type}\" \
-STITCH_OUTPUT_TAG=\"$(apply_pattern "$output_pattern")\" \
+STITCH_OUTPUT_TAG=\"${output_tag}\" \
 STITCH_AUTORUN=\"true\" \
-/opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/${script_name}"
+/opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/stitch_crop.py"
 
   # Run with logging
   run_with_logging "$cmd" "$log_file" "$run_background"
@@ -451,13 +429,11 @@ if should_run_step 3; then
   wait
 fi
 
-# 4_CP_StitchCrop - PLATE, WELL
+# 4_CP_StitchCrop - Processes ALL wells found in painting directory
 if should_run_step 4; then
-  echo "Running Pipeline 4: CP_StitchCrop"
-  PIPELINE=4
-  for WELL in "${WELLS[@]}"; do
-      run_stitchcrop_pipeline $PIPELINE
-  done
+  echo "Running Pipeline 4: CP_StitchCrop (painting)"
+  # Note: Only run once - the script auto-discovers and processes ALL wells
+  run_stitchcrop_pipeline 4
   wait
 fi
 
@@ -507,13 +483,11 @@ if should_run_step 7; then
   wait
 fi
 
-# 8_BC_StitchCrop - PLATE, WELL
+# 8_BC_StitchCrop - Processes ALL wells found in barcoding directory
 if should_run_step 8; then
-  echo "Running Pipeline 8: BC_StitchCrop"
-  PIPELINE=8
-  for WELL in "${WELLS[@]}"; do
-      run_stitchcrop_pipeline $PIPELINE
-  done
+  echo "Running Pipeline 8: BC_StitchCrop (barcoding)"
+  # Note: Only run once - the script auto-discovers and processes ALL wells
+  run_stitchcrop_pipeline 8
   wait
 fi
 

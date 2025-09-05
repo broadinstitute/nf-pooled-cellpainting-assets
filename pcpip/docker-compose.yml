@@ -79,3 +79,37 @@ services:
     tty: true
     profiles:
       - interactive
+
+  # Minimal QC service with Pixi
+  qc:
+    image: ghcr.io/prefix-dev/pixi:latest
+    platform: linux/amd64
+    container_name: pcpip-qc
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./data:/app/data:rw
+    working_dir: /app/scripts
+    entrypoint: []
+    command: ["bash", "run_pcpip.sh"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PIPELINE_STEP=${PIPELINE_STEP}
+    stdin_open: true
+    tty: true
+
+  qc-shell:
+    image: ghcr.io/prefix-dev/pixi:latest
+    platform: linux/amd64
+    container_name: pcpip-qc-shell
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./data:/app/data:rw
+    working_dir: /app
+    entrypoint: []
+    command: ["bash"]
+    environment:
+      - PYTHONUNBUFFERED=1
+    stdin_open: true
+    tty: true
+    profiles:
+      - interactive

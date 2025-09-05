@@ -2,11 +2,21 @@
 
 Containerized PCPIP (Pooled Cell Painting Image Processing) pipeline demo using CellProfiler and Fiji.
 
+## Pipeline Architecture
+
+This pipeline uses three specialized Docker containers:
+- **cellprofiler**: Runs CellProfiler pipelines (1-3, 5-7, 9)
+- **fiji**: Runs ImageJ/Fiji stitching (4, 8)
+- **qc**: Runs QC visualizations with Pixi (1_qc_illum, 5_qc_illum)
+
+Each container is called with `PIPELINE_STEP` to specify what to run.
+
 ## Quick Start
 
 ### Prerequisites
 - Docker Desktop with **16GB memory** for Pipeline 9 (Settings → Resources → Advanced)
-- Git and `uv` installed
+- Git installed
+- Optional: [Pixi](https://pixi.sh) for running QC scripts locally
 
 ### Setup & Run
 
@@ -20,12 +30,27 @@ git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/activ
 # 2. Get test data (~3GB)
 aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
 
-# 3. Run complete workflow
-PIPELINE_STEP="1,2,3" docker-compose run --rm cellprofiler  # Cell painting illumination
-PIPELINE_STEP=4 docker-compose run --rm fiji                # Cell painting stitching
-PIPELINE_STEP="5,6,7" docker-compose run --rm cellprofiler  # Barcoding processing
-PIPELINE_STEP=8 docker-compose run --rm fiji                # Barcoding stitching
-PIPELINE_STEP=9 docker-compose run --rm cellprofiler        # Analysis (needs 16GB RAM)
+# 3. Run complete workflow with QC
+# Cell Painting illumination
+PIPELINE_STEP=1 docker-compose run --rm cellprofiler
+# QC: Verify illumination correction functions
+PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
+# Continue Cell Painting processing
+PIPELINE_STEP="2,3" docker-compose run --rm cellprofiler
+# Cell Painting stitching
+PIPELINE_STEP=4 docker-compose run --rm fiji
+
+# Barcoding illumination
+PIPELINE_STEP=5 docker-compose run --rm cellprofiler
+# QC: Verify barcoding illumination functions
+PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
+# Continue Barcoding processing
+PIPELINE_STEP="6,7" docker-compose run --rm cellprofiler
+# Barcoding stitching
+PIPELINE_STEP=8 docker-compose run --rm fiji
+
+# Analysis (needs 16GB RAM)
+PIPELINE_STEP=9 docker-compose run --rm cellprofiler
 ```
 
 <details>
@@ -88,12 +113,20 @@ flowchart TD
     Alternative version that
     identifies & masks debris"] -.-> PCP6
 
+    PCP1 -.-> QC1["QC: Illum Montage (Pixi)
+    Verify circular & smooth"]
+
+    PCP5 -.-> QC5["QC: Illum Montage (Pixi)
+    Verify circular & smooth"]
+
     %% Processing platforms
     classDef cellprofiler fill:#e6f3ff,stroke:#0066cc
     classDef fiji fill:#e6ffe6,stroke:#009900
+    classDef qc fill:#fff2e6,stroke:#ff8c1a
 
     class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP7A,PCP8Y,PCP9,PCP6A cellprofiler
     class PCP4,PCP8,PCP8Z fiji
+    class QC1,QC5 qc
 ```
 
 </details>
@@ -109,12 +142,60 @@ pcpip/
 ├── scripts/                               # Processing scripts and utilities
 │   ├── run_pcpip.sh                       # Main pipeline orchestration script
 │   ├── stitch_crop.py                     # ImageJ/Fiji stitching and cropping
+│   ├── qc_illum_montage.py                # QC visualization for illumination functions
 │   ├── transform_pipeline9_csv.py         # CSV transformation for cropped tiles
 │   └── check_csv_files.py                 # File validation utility
 ├── data/                                  # Unified data directory
+│   └── Source1/Batch1/
+│       ├── illum/                         # Illumination correction functions
+│       ├── images_corrected/              # Corrected images
+│       ├── images_aligned/                # Aligned barcoding images
+│       ├── images_corrected_stitched/     # Stitched whole-well images
+│       ├── images_corrected_cropped/      # Cropped tile images
+│       └── qc_reports/                    # QC visualization outputs
 └── docker-compose.yml                     # Container configuration
 ```
 
+
+### Quality Control (QC)
+
+The pipeline includes automatic QC checks after key processing steps. These checks help verify that illumination correction functions appear "vaguely circular and vaguely smooth" as expected.
+
+#### Running QC Steps
+
+QC steps are treated as standalone pipeline steps, just like stitching:
+
+```bash
+# Run QC after Pipeline 1
+PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
+
+# Run QC after Pipeline 5
+PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
+
+# Run locally with Pixi (if installed)
+./scripts/qc_illum_montage.py \
+  data/Source1/Batch1/illum/Plate1 \
+  data/Source1/Batch1/qc_reports/1_illumination_cp/Plate1/montage.png \
+  painting Plate1
+
+# Custom channels and cycles
+./scripts/qc_illum_montage.py \
+  data/Source1/Batch1/illum/Plate1 \
+  output.png barcoding Plate1 \
+  --cycles 1-2 --channels DNA,A,C
+
+# Interactive QC shell
+docker-compose run --rm qc-shell
+# Then inside container:
+./qc_illum_montage.py /app/data/Source1/Batch1/illum/Plate1 /app/data/test.png painting Plate1
+```
+
+#### QC Options
+
+- `--channels`: Specify channels to include (e.g., `DNA,Phalloidin`)
+- `--cycles`: Specify cycles for barcoding (e.g., `1-3` or `1,3,5`)
+- `--verbose/-v`: Enable detailed logging
+- Set `RUN_QC=false` environment variable to skip automatic QC
 
 ### Troubleshooting
 

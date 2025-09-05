@@ -20,13 +20,15 @@
       "Bash(git mv:*)",
       "Bash(md5sum:*)",
       "WebFetch(domain:wave.seqera.io)",
-      "Bash(docker-compose run:*)"
+      "Bash(docker-compose run:*)",
+      "Read(/Users/shsingh/Documents/GitHub/nf/starrynight/docs/developer/legacy/**)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "/Users/shsingh/Documents/GitHub/starrynight/docs/user/",
-      "/Users/shsingh/Documents/GitHub/starrynight/utils/pcpip-stitchcrop/"
+      "../starrynight/docs/user/",
+      "../starrynight/utils/pcpip-stitchcrop/"
     ]
   }
 }

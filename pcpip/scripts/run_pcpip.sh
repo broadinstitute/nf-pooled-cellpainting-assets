@@ -18,6 +18,9 @@
 # Pipeline step to run (required - no default)
 PIPELINE_STEP=${PIPELINE_STEP}
 
+# QC enablement flag (default: true) - for automatic QC within pipelines
+RUN_QC=${RUN_QC:-"true"}
+
 # Docker-based paths
 LOAD_DATA_DIR="/app/data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
 REPRODUCE_DIR="/app/data"
@@ -163,6 +166,24 @@ declare -A STITCH_CONFIG=(
   [8,background]="true"
 )
 
+# Define QC check configurations
+declare -A QC_CONFIG=(
+  # QC after Pipeline 1 - Cell Painting Illumination
+  [1_qc_illum,script]="qc_illum_montage.py"
+  [1_qc_illum,input]="illum/PLATE"
+  [1_qc_illum,output]="qc_reports/1_illumination_cp/PLATE"
+  [1_qc_illum,log]="1_qc_illum_PLATE"
+  [1_qc_illum,type]="painting"
+
+  # QC after Pipeline 5 - Barcoding Illumination
+  [5_qc_illum,script]="qc_illum_montage.py"
+  [5_qc_illum,input]="illum/PLATE"
+  [5_qc_illum,output]="qc_reports/5_illumination_bc/PLATE"
+  [5_qc_illum,log]="5_qc_illum_PLATE"
+  [5_qc_illum,type]="barcoding"
+)
+
+
 # Function to apply variable substitution to a pattern
 apply_pattern() {
   local pattern=$1
@@ -293,6 +314,38 @@ STITCH_AUTORUN=\"true\" \
   run_with_logging "$cmd" "$log_file" "$run_background"
 }
 
+# Function to run QC checks
+run_qc_check() {
+  local qc_key=$1
+  local script=${QC_CONFIG[$qc_key,script]}
+  local qc_type=${QC_CONFIG[$qc_key,type]}
+
+  # Build input and output paths
+  local input_dir=$(apply_pattern "${REPRODUCE_DIR}/Source1/Batch1/${QC_CONFIG[$qc_key,input]}")
+  local output_dir=$(apply_pattern "${REPRODUCE_DIR}/Source1/Batch1/${QC_CONFIG[$qc_key,output]}")
+  local output_file="${output_dir}/montage.png"
+
+  # Create output directory if needed
+  mkdir -p "${output_dir}"
+
+  # Build command - using the executable script directly (it has pixi shebang)
+  local cmd="/app/scripts/${script} \"${input_dir}\" \"${output_file}\" \"${qc_type}\" \"${PLATE}\""
+
+  # Get log filename using pattern substitution
+  local log_pattern=${QC_CONFIG[$qc_key,log]}
+  local log_file="${LOG_DIR}/$(apply_pattern "$log_pattern").log"
+
+  # Log the QC execution
+  echo "Running QC check: $qc_key"
+  echo "Input: $input_dir"
+  echo "Output: $output_file"
+  echo "Type: $qc_type"
+  echo "Logging to: $log_file"
+
+  # Run with logging
+  run_with_logging "$cmd" "$log_file" "false"
+}
+
 # Function to check if a pipeline step should run
 should_run_step() {
   local step=$1
@@ -326,6 +379,12 @@ if should_run_step 1; then
   echo "Running Pipeline 1: CP_Illum"
   PIPELINE=1
   run_pipeline $PIPELINE
+fi
+
+# 1_qc_illum - QC for Cell Painting illumination
+if should_run_step 1_qc_illum; then
+  echo "Running QC for Pipeline 1: Illumination Montage"
+  run_qc_check "1_qc_illum"
 fi
 
 # 2_CP_Apply_Illum - PLATE, WELL
@@ -366,6 +425,12 @@ if should_run_step 5; then
       run_pipeline $PIPELINE
   done
   wait
+fi
+
+# 5_qc_illum - QC for Barcoding illumination
+if should_run_step 5_qc_illum; then
+  echo "Running QC for Pipeline 5: Illumination Montage"
+  run_qc_check "5_qc_illum"
 fi
 
 # 6_BC_Apply_Illum - PLATE, WELL, SITE

@@ -80,7 +80,7 @@ def get_required_env(var_name):
 # These MUST be provided by the calling script (run_pcpip.sh)
 input_file_location = get_required_env("STITCH_INPUT_BASE")
 track_type = get_required_env("STITCH_TRACK_TYPE")
-out_subdir_tag = get_required_env("STITCH_OUTPUT_TAG")
+# Note: out_subdir_tag will be inferred from the data, not passed as parameter
 
 step_to_stitch = "images_corrected"  # Input subdirectory name
 subdir = "images_corrected/{}".format(track_type)  # Build path dynamically
@@ -214,16 +214,8 @@ if not os.path.exists(tile_outdir):
 if not os.path.exists(downsample_outdir):
     os.mkdir(downsample_outdir)
 
-# Define and create the batch-specific subfolders where the images will be output
-out_subdir = os.path.join(outfolder, out_subdir_tag)
-tile_subdir = os.path.join(tile_outdir, out_subdir_tag)
-downsample_subdir = os.path.join(downsample_outdir, out_subdir_tag)
-if not os.path.exists(tile_subdir):
-    os.mkdir(tile_subdir)
-if not os.path.exists(downsample_subdir):
-    os.mkdir(downsample_subdir)
-if not os.path.exists(out_subdir):
-    os.mkdir(out_subdir)
+# Note: Plate-specific subdirectories will be created later after inferring plate IDs
+# The old approach of creating a single directory here is removed
 
 # STEP 2: Prepare input directory and files
 subdir = os.path.join(input_file_location, subdir)
@@ -270,6 +262,8 @@ if os.path.isdir(subdir):
     # Lists to track wells and prefix/suffix combinations
     welllist = []  # List of all well IDs found
     presuflist = []  # List of (prefix, channel) tuples
+    well_to_plate = {}  # Mapping of well ID to plate ID
+    plate_to_prefix = {}  # Mapping of plate ID to its filename prefix
     permprefix = None  # Track a permanent prefix for reference
     permsuffix = None  # Track a permanent suffix for reference
 
@@ -303,10 +297,30 @@ if os.path.isdir(subdir):
                             )
                         )
 
+                    # Extract plate ID from the prefix (e.g., "Plate_Plate1" -> "Plate1")
+                    plate_id = (
+                        prefixBeforeWell.split("_")[-1]
+                        if "_" in prefixBeforeWell
+                        else prefixBeforeWell
+                    )
+                    logger.info("Extracted plate ID: {}".format(plate_id))
+
                     # Track this well if new
                     if Well not in welllist:
                         welllist.append(Well)
-                        logger.info("Added to welllist: {}".format(Well))
+                        well_to_plate[Well] = plate_id
+                        logger.info(
+                            "Added to welllist: {} (plate: {})".format(Well, plate_id)
+                        )
+
+                    # Track plate-to-prefix mapping
+                    if plate_id not in plate_to_prefix:
+                        plate_to_prefix[plate_id] = prefixBeforeWell
+                        logger.info(
+                            "Plate {} uses prefix: {}".format(
+                                plate_id, prefixBeforeWell
+                            )
+                        )
 
                     # If this file has our target channel, note its prefix/suffix
                     if channame in channelSuffix:
@@ -379,11 +393,12 @@ if os.path.isdir(subdir):
 
         # STEP 5: Process each well
         for eachwell in welllist:
+            # Get the plate ID for this well
+            plate_id = well_to_plate.get(eachwell, "UnknownPlate")
+
             # Create well-specific output directories
             # Use Plate-Well format (e.g., Plate1-A1) for directory names
-            well_dir_name = "{}-{}".format(
-                out_subdir_tag, eachwell
-            )  # e.g., "Plate1-A1"
+            well_dir_name = "{}-{}".format(plate_id, eachwell)  # e.g., "Plate1-A1"
             well_out_subdir = os.path.join(outfolder, well_dir_name)
             well_tile_subdir = os.path.join(tile_outdir, well_dir_name)
             well_downsample_subdir = os.path.join(downsample_outdir, well_dir_name)
@@ -621,18 +636,20 @@ else:
 
 # STEP 13: Move the TileConfiguration.txt file to the output directory
 # Note: This file gets overwritten for each well, so we just keep the last one
+# Since we don't have a single out_subdir anymore, put it in the base output folder
 for eachlogfile in ["TileConfiguration.txt"]:
     try:
+        # Move to the base output folder instead of a specific plate folder
         os.rename(
             os.path.join(subdir, eachlogfile),
-            os.path.join(out_subdir, eachlogfile),
+            os.path.join(outfolder, eachlogfile),
         )
         logger.info("Moved {} to output directory".format(eachlogfile))
     except FileNotFoundError:
         logger.warning("Could not find TileConfiguration.txt in {}".format(subdir))
         # Create an empty file if it doesn't exist (for testing purposes)
-        if not os.path.exists(os.path.join(out_subdir, eachlogfile)):
-            with open(os.path.join(out_subdir, eachlogfile), "w") as f:
+        if not os.path.exists(os.path.join(outfolder, eachlogfile)):
+            with open(os.path.join(outfolder, eachlogfile), "w") as f:
                 f.write("# This is a placeholder file\n")
             logger.info("Created empty {} in output directory".format(eachlogfile))
 

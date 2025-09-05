@@ -135,10 +135,6 @@ declare -A STITCH_CONFIG=(
   [4,track]="painting"
   [8,track]="barcoding"
 
-  # Output subdirectory tag - base directory for all wells
-  [4,output_tag]="${PLATE}"
-  [8,output_tag]="${PLATE}"
-
   # Log filename patterns
   [4,log]="pipeline4_painting_${PLATE}"
   [8,log]="pipeline8_barcoding_${PLATE}"
@@ -301,7 +297,6 @@ run_stitchcrop_pipeline() {
   local pipeline=$1  # 4 or 8
   local run_background=${STITCH_CONFIG[$pipeline,background]}
   local track_type=${STITCH_CONFIG[$pipeline,track]}
-  local output_tag=${STITCH_CONFIG[$pipeline,output_tag]}
   local log_file="${LOG_DIR}/${STITCH_CONFIG[$pipeline,log]}.log"
 
   echo "Running Pipeline $pipeline (Stitch-Crop for ${track_type}), logging to: $log_file"
@@ -310,7 +305,6 @@ run_stitchcrop_pipeline() {
   # Set environment variables for the Python script to read
   local cmd="STITCH_INPUT_BASE=\"${REPRODUCE_DIR}/Source1/Batch1\" \
 STITCH_TRACK_TYPE=\"${track_type}\" \
-STITCH_OUTPUT_TAG=\"${output_tag}\" \
 STITCH_AUTORUN=\"true\" \
 /opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/stitch_crop.py"
 

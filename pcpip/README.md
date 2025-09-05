@@ -31,25 +31,16 @@ git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
 aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
 
 # 3. Run complete workflow with QC
-# Cell Painting illumination
 PIPELINE_STEP=1 docker-compose run --rm cellprofiler
-# QC: Verify illumination correction functions
 PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
-# Continue Cell Painting processing
 PIPELINE_STEP="2,3" docker-compose run --rm cellprofiler
-# Cell Painting stitching
 PIPELINE_STEP=4 docker-compose run --rm fiji
 
-# Barcoding illumination
 PIPELINE_STEP=5 docker-compose run --rm cellprofiler
-# QC: Verify barcoding illumination functions
 PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
-# Continue Barcoding processing
 PIPELINE_STEP="6,7" docker-compose run --rm cellprofiler
-# Barcoding stitching
 PIPELINE_STEP=8 docker-compose run --rm fiji
 
-# Analysis (needs 16GB RAM)
 PIPELINE_STEP=9 docker-compose run --rm cellprofiler
 ```
 
@@ -277,8 +268,10 @@ To share pipeline outputs for reproducibility:
 export AWS_PROFILE=your-profile-name  # Or configure AWS credentials as appropriate
 
 # Step 1: Upload data (excluding logs)
+# Add `--delete` flag to remove S3 files not present locally, BUT USE WITH CAUTION!
 aws s3 sync data/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/ \
   --size-only \
+  --no-follow-symlinks \
   --exclude "logs/*" \
   --exclude "*.tmp" \
   --exclude ".DS_Store"
@@ -292,3 +285,34 @@ aws s3 sync data/logs/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1
 
 **Warning**: Clean logs directory before syncing - it accumulates junk from iterations. Only upload final, relevant pipeline logs.
 **Note**: Uses `--size-only` to avoid re-uploading unchanged files (compares size only, not timestamps).
+
+#### Comparing Local Outputs with S3
+
+To verify local pipeline outputs match the reference outputs on S3:
+
+```bash
+# Compare Batch1 outputs (excluding temporary files and CellProfiler CSVs)
+pixi exec --spec rclone -- rclone check \
+  data/Source1/Batch1 \
+  :s3,provider=AWS,region=us-east-1:nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/Source1/Batch1 \
+  --skip-links \
+  --exclude "*_Image.csv" \
+  --exclude "*_Experiment.csv" \
+  --exclude ".DS_Store" \
+  --exclude "*.tmp"
+
+# Compare analysis outputs separately
+pixi exec --spec rclone -- rclone check \
+  data/Source1/workspace/analysis \
+  :s3,provider=AWS,region=us-east-1:nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/Source1/workspace/analysis \
+  --skip-links \
+  --exclude "Image.csv" \
+  --exclude "Experiment.csv" \
+  --exclude ".DS_Store" \
+  --exclude "*.tmp"
+```
+
+**Note**:
+- Uses rclone's on-the-fly S3 config (`:s3,provider=AWS,region=us-east-1:`) for public bucket access
+- Excludes CellProfiler experiment CSVs which contain timestamps/metadata that vary between runs
+- The `--skip-links` flag ignores symbolic links

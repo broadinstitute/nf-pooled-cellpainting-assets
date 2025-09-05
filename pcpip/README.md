@@ -265,3 +265,30 @@ duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_cr
 uv run scripts/check_csv_files.py /tmp/load_data_pipeline9_cropped_A1.csv
 # Total: 64, Found: 64, Missing: 0
 ```
+
+### Maintainer Notes
+
+#### Uploading Results to S3
+
+To share pipeline outputs for reproducibility:
+
+```bash
+# Set your AWS profile (if needed)
+export AWS_PROFILE=your-profile-name  # Or configure AWS credentials as appropriate
+
+# Step 1: Upload data (excluding logs)
+aws s3 sync data/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/ \
+  --size-only \
+  --exclude "logs/*" \
+  --exclude "*.tmp" \
+  --exclude ".DS_Store"
+
+# Step 2: Clean up logs first! Remove iteration/test runs, keep only final pipeline runs
+rm -rf data/logs/2025-*-test/  # Example: remove test directories
+# Then sync logs separately
+aws s3 sync data/logs/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/logs/ \
+  --size-only
+```
+
+**Warning**: Clean logs directory before syncing - it accumulates junk from iterations. Only upload final, relevant pipeline logs.  
+**Note**: Uses `--size-only` to avoid re-uploading unchanged files (compares size only, not timestamps).

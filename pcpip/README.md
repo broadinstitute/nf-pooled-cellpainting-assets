@@ -25,7 +25,7 @@ Each container is called with `PIPELINE_STEP` to specify what to run.
 cd pcpip/
 
 # 1. Clone plugins
-git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/active_plugins
+git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
 
 # 2. Get test data (~3GB)
 aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
@@ -290,5 +290,5 @@ aws s3 sync data/logs/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1
   --size-only
 ```
 
-**Warning**: Clean logs directory before syncing - it accumulates junk from iterations. Only upload final, relevant pipeline logs.  
+**Warning**: Clean logs directory before syncing - it accumulates junk from iterations. Only upload final, relevant pipeline logs.
 **Note**: Uses `--size-only` to avoid re-uploading unchanged files (compares size only, not timestamps).

@@ -22,7 +22,16 @@
       "WebFetch(domain:wave.seqera.io)",
       "Bash(docker-compose run:*)",
       "Read(/Users/shsingh/Documents/GitHub/nf/starrynight/docs/developer/legacy/**)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Read(/Users/shsingh/Documents/GitHub/nf/starrynight/docs/developer/legacy/**)",
+      "Read(/Users/shsingh/Documents/GitHub/nf/starrynight/docs/developer/assets/pcpip-notebooks/**)",
+      "Read(/Users/shsingh/Documents/GitHub/nf/starrynight/docs/developer/assets/pcpip-notebooks/**)",
+      "Read(/Users/shsingh/Documents/GitHub/nf/starrynight/docs/developer/assets/pcpip-notebooks/**)",
+      "Bash(./qc_stitch_visual.py --help)",
+      "Bash(./qc_illum_montage.py)",
+      "Read(/Users/shsingh/Documents/GitHub/nf/starrynight/docs/developer/legacy/**)",
+      "Bash(./qc_stitch_visual.py ../data/Source1/Batch1/images_corrected_stitched_10X/painting/Plate1-A1 test_output.png painting Plate1 --well A1 -v)",
+      "Bash(./qc_stitch_visual.py:*)"
     ],
     "deny": [],
     "ask": [],

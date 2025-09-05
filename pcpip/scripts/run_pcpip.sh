@@ -172,15 +172,41 @@ declare -A QC_CONFIG=(
   [1_qc_illum,script]="qc_illum_montage.py"
   [1_qc_illum,input]="illum/PLATE"
   [1_qc_illum,output]="qc_reports/1_illumination_cp/PLATE"
+  [1_qc_illum,output_type]="file"  # 'file' or 'dir'
+  [1_qc_illum,output_name]="montage.png"  # Name for single file outputs
   [1_qc_illum,log]="1_qc_illum_PLATE"
   [1_qc_illum,type]="painting"
+  [1_qc_illum,extra_args]=""  # Additional arguments if needed
 
   # QC after Pipeline 5 - Barcoding Illumination
   [5_qc_illum,script]="qc_illum_montage.py"
   [5_qc_illum,input]="illum/PLATE"
   [5_qc_illum,output]="qc_reports/5_illumination_bc/PLATE"
+  [5_qc_illum,output_type]="file"
+  [5_qc_illum,output_name]="montage.png"
   [5_qc_illum,log]="5_qc_illum_PLATE"
   [5_qc_illum,type]="barcoding"
+  [5_qc_illum,extra_args]=""
+
+  # QC after Pipeline 4 - Cell Painting Stitching
+  [4_qc_stitch,script]="qc_stitch_visual.py"
+  [4_qc_stitch,input]="images_corrected_stitched_10X/painting/PLATE"
+  [4_qc_stitch,output]="qc_reports/4_stitching_cp/PLATE"
+  [4_qc_stitch,output_type]="dir"  # Multiple output files, one per well
+  [4_qc_stitch,output_name]=""
+  [4_qc_stitch,log]="4_qc_stitch_PLATE"
+  [4_qc_stitch,type]="painting"
+  [4_qc_stitch,extra_args]=""
+
+  # QC after Pipeline 8 - Barcoding Stitching
+  [8_qc_stitch,script]="qc_stitch_visual.py"
+  [8_qc_stitch,input]="images_corrected_stitched_10X/barcoding/PLATE"
+  [8_qc_stitch,output]="qc_reports/8_stitching_bc/PLATE"
+  [8_qc_stitch,output_type]="dir"
+  [8_qc_stitch,output_name]=""
+  [8_qc_stitch,log]="8_qc_stitch_PLATE"
+  [8_qc_stitch,type]="barcoding"
+  [8_qc_stitch,extra_args]="--channel Cycle01_DAPI"
 )
 
 
@@ -319,17 +345,32 @@ run_qc_check() {
   local qc_key=$1
   local script=${QC_CONFIG[$qc_key,script]}
   local qc_type=${QC_CONFIG[$qc_key,type]}
+  local output_type=${QC_CONFIG[$qc_key,output_type]:-"file"}
+  local output_name=${QC_CONFIG[$qc_key,output_name]:-"output.png"}
+  local extra_args=${QC_CONFIG[$qc_key,extra_args]:-""}
 
   # Build input and output paths
   local input_dir=$(apply_pattern "${REPRODUCE_DIR}/Source1/Batch1/${QC_CONFIG[$qc_key,input]}")
   local output_dir=$(apply_pattern "${REPRODUCE_DIR}/Source1/Batch1/${QC_CONFIG[$qc_key,output]}")
-  local output_file="${output_dir}/montage.png"
+
+  # Determine output path based on output type
+  local output_path
+  if [[ "$output_type" == "file" ]]; then
+    output_path="${output_dir}/${output_name}"
+  else
+    # For directory outputs, just pass the directory
+    output_path="${output_dir}"
+  fi
 
   # Create output directory if needed
   mkdir -p "${output_dir}"
 
   # Build command - using the executable script directly (it has pixi shebang)
-  local cmd="/app/scripts/${script} \"${input_dir}\" \"${output_file}\" \"${qc_type}\" \"${PLATE}\""
+  # Add extra_args at the end if specified
+  local cmd="/app/scripts/${script} \"${input_dir}\" \"${output_path}\" \"${qc_type}\" \"${PLATE}\""
+  if [[ -n "$extra_args" ]]; then
+    cmd+=" ${extra_args}"
+  fi
 
   # Get log filename using pattern substitution
   local log_pattern=${QC_CONFIG[$qc_key,log]}
@@ -338,8 +379,11 @@ run_qc_check() {
   # Log the QC execution
   echo "Running QC check: $qc_key"
   echo "Input: $input_dir"
-  echo "Output: $output_file"
+  echo "Output: $output_path"
   echo "Type: $qc_type"
+  if [[ -n "$extra_args" ]]; then
+    echo "Extra args: $extra_args"
+  fi
   echo "Logging to: $log_file"
 
   # Run with logging
@@ -417,6 +461,12 @@ if should_run_step 4; then
   wait
 fi
 
+# 4_qc_stitch - QC for Cell Painting stitching
+if should_run_step 4_qc_stitch; then
+  echo "Running QC for Pipeline 4: Stitching Visualization"
+  run_qc_check "4_qc_stitch"
+fi
+
 # 5_BC_Illum - PLATE, CYCLE
 if should_run_step 5; then
   echo "Running Pipeline 5: BC_Illum"
@@ -465,6 +515,12 @@ if should_run_step 8; then
       run_stitchcrop_pipeline $PIPELINE
   done
   wait
+fi
+
+# 8_qc_stitch - QC for Barcoding stitching
+if should_run_step 8_qc_stitch; then
+  echo "Running QC for Pipeline 8: Stitching Visualization"
+  run_qc_check "8_qc_stitch"
 fi
 
 # 9_Analysis - PLATE, WELL, SITE

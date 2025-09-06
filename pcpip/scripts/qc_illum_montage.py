@@ -22,12 +22,7 @@ import typer
 from loguru import logger
 from typing_extensions import Annotated
 
-# Configure logger
-logger.remove()  # Remove default handler
-logger.add(
-    sys.stderr,
-    format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{function}</cyan> - <level>{message}</level>",
-)
+# Use default loguru configuration
 
 app = typer.Typer(help="Create QC montage of illumination correction functions")
 
@@ -325,14 +320,10 @@ def main(
         ./qc_illum_montage.py data/illum output.png barcoding Plate1 --cycles 1-3 --channels DNA,A,C
     """
 
-    # Adjust logging level based on verbose flag
+    # Enable debug logging if verbose
     if verbose:
         logger.remove()
-        logger.add(
-            sys.stderr,
-            level="DEBUG",
-            format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{function}</cyan> - <level>{message}</level>",
-        )
+        logger.add(sys.stderr, level="DEBUG")
 
     # Validate pipeline type
     if pipeline_type not in ["painting", "barcoding"]:

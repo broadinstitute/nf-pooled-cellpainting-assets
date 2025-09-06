@@ -167,24 +167,12 @@ declare -A QC_CONFIG=(
   [5_qc_illum,extra_args]=""
 
   # QC after Pipeline 4 - Cell Painting Stitching
-  [4_qc_stitch,script]="qc_stitch_visual.py"
-  [4_qc_stitch,input]="images_corrected_stitched_10X/painting/PLATE"
-  [4_qc_stitch,output]="qc_reports/4_stitching_cp/PLATE"
-  [4_qc_stitch,output_type]="dir"  # Multiple output files, one per well
-  [4_qc_stitch,output_name]=""
-  [4_qc_stitch,log]="4_qc_stitch_PLATE"
-  [4_qc_stitch,type]="painting"
-  [4_qc_stitch,extra_args]=""
+  # NOTE: Stitching QC visualization removed - needs clearer requirements
+  # Original intent was to check quadrant alignment for round wells,
+  # but current implementation only does square wells with single stitched output
 
   # QC after Pipeline 8 - Barcoding Stitching
-  [8_qc_stitch,script]="qc_stitch_visual.py"
-  [8_qc_stitch,input]="images_corrected_stitched_10X/barcoding/PLATE"
-  [8_qc_stitch,output]="qc_reports/8_stitching_bc/PLATE"
-  [8_qc_stitch,output_type]="dir"
-  [8_qc_stitch,output_name]=""
-  [8_qc_stitch,log]="8_qc_stitch_PLATE"
-  [8_qc_stitch,type]="barcoding"
-  [8_qc_stitch,extra_args]="--channel Cycle01_DAPI"
+  # NOTE: Stitching QC visualization removed - needs clearer requirements
 )
 
 
@@ -432,10 +420,11 @@ if should_run_step 4; then
 fi
 
 # 4_qc_stitch - QC for Cell Painting stitching
-if should_run_step 4_qc_stitch; then
-  echo "Running QC for Pipeline 4: Stitching Visualization"
-  run_qc_check "4_qc_stitch"
-fi
+# NOTE: Disabled - needs clearer requirements for stitching QC
+# if should_run_step 4_qc_stitch; then
+#   echo "Running QC for Pipeline 4: Stitching Visualization"
+#   run_qc_check "4_qc_stitch"
+# fi
 
 # 5_BC_Illum - PLATE, CYCLE
 if should_run_step 5; then
@@ -486,10 +475,11 @@ if should_run_step 8; then
 fi
 
 # 8_qc_stitch - QC for Barcoding stitching
-if should_run_step 8_qc_stitch; then
-  echo "Running QC for Pipeline 8: Stitching Visualization"
-  run_qc_check "8_qc_stitch"
-fi
+# NOTE: Disabled - needs clearer requirements for stitching QC
+# if should_run_step 8_qc_stitch; then
+#   echo "Running QC for Pipeline 8: Stitching Visualization"
+#   run_qc_check "8_qc_stitch"
+# fi
 
 # 9_Analysis - PLATE, WELL, SITE
 if should_run_step 9; then

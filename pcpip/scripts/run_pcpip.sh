@@ -65,11 +65,11 @@ declare -A PIPELINE_CONFIG=(
 
   # Output directory patterns
   [1,output]="illum/PLATE"
-  [2,output]="images_corrected/painting/PLATE-WELL"
-  [3,output]="images_segmentation/PLATE-WELL"
+  [2,output]="images_corrected/painting/PLATE/PLATE-WELL-SITE"
+  [3,output]="images_segmentation/PLATE/PLATE-WELL"
   [5,output]="illum/PLATE"
-  [6,output]="images_aligned/barcoding/PLATE-WELL-SITE"
-  [7,output]="images_corrected/barcoding/PLATE-WELL-SITE"
+  [6,output]="images_aligned/barcoding/PLATE/PLATE-WELL-SITE"
+  [7,output]="images_corrected/barcoding/PLATE/PLATE-WELL-SITE"
   [9,output]="../workspace/analysis/Batch1/PLATE-WELL-SITE"
 
   # Log filename patterns
@@ -83,7 +83,7 @@ declare -A PIPELINE_CONFIG=(
 
   # Group patterns
   [1,group]="Metadata_Plate=PLATE"
-  [2,group]="Metadata_Plate=PLATE,Metadata_Well=WELL"
+  [2,group]="Metadata_Plate=PLATE,Metadata_Well=WELL,Metadata_Site=SITE"
   [3,group]="Metadata_Plate=PLATE,Metadata_Well=WELL"
   [5,group]="Metadata_Plate=PLATE,Metadata_Cycle=CYCLE"
   [6,group]="Metadata_Plate=PLATE,Metadata_Well=WELL,Metadata_Site=SITE"

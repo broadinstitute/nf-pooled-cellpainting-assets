@@ -134,6 +134,8 @@ pcpip/
 │   ├── run_pcpip.sh                       # Main pipeline orchestration script
 │   ├── stitch_crop.py                     # ImageJ/Fiji stitching and cropping
 │   ├── qc_illum_montage.py                # QC visualization for illumination functions
+│   ├── transform_pipeline3_csv.py         # CSV transformation for segmentation QC (skip pattern + plate nesting)
+│   ├── transform_pipeline7_csv.py         # CSV transformation for plate nesting from pipeline 6
 │   ├── transform_pipeline9_csv.py         # CSV transformation for cropped tiles
 │   └── check_csv_files.py                 # File validation utility
 ├── data/                                  # Unified data directory
@@ -245,6 +247,14 @@ grep "Saving /app/data/" /tmp/stitch_crop_painting_Plate1_A1.log
 ### Utility Scripts
 
 ```bash
+# Transform Pipeline 3 CSV for segmentation QC (skip pattern + plate nesting)
+BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+uv run scripts/transform_pipeline3_csv.py ${BASE_DIR}/load_data_pipeline3.csv ${BASE_DIR}/load_data_pipeline3_revised.csv
+
+# Transform Pipeline 7 CSV for plate nesting from pipeline 6
+BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+uv run scripts/transform_pipeline7_csv.py ${BASE_DIR}/load_data_pipeline7.csv ${BASE_DIR}/load_data_pipeline7_revised.csv
+
 # Transform Pipeline 9 CSV for cropped tiles
 BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
 uv run scripts/transform_pipeline9_csv.py ${BASE_DIR}/load_data_pipeline9.csv ${BASE_DIR}/load_data_pipeline9_cropped.csv

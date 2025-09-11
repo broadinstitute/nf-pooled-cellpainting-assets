@@ -57,10 +57,10 @@ declare -A PIPELINE_CONFIG=(
   # Data files
   [1,data]="load_data_pipeline1.csv"
   [2,data]="load_data_pipeline2.csv"
-  [3,data]="load_data_pipeline3.csv"
+  [3,data]="load_data_pipeline3_revised.csv"
   [5,data]="load_data_pipeline5.csv"
   [6,data]="load_data_pipeline6.csv"
-  [7,data]="load_data_pipeline7.csv"
+  [7,data]="load_data_pipeline7_revised.csv"
   [9,data]="load_data_pipeline9_cropped.csv"
 
   # Output directory patterns
@@ -396,7 +396,9 @@ if should_run_step 2; then
   echo "Running Pipeline 2: CP_Apply_Illum"
   PIPELINE=2
   for WELL in "${WELLS[@]}"; do
-      run_pipeline $PIPELINE
+      for SITE in "${SITES[@]}"; do
+        run_pipeline $PIPELINE
+      done
   done
   wait
 fi

@@ -225,28 +225,30 @@ logger.info("Input subdirectory: {}".format(subdir))
 
 # Check what's in the input directory
 logger.info("Checking if directory exists: {}".format(subdir))
-a = os.listdir(subdir)
-logger.info("Contents of {}: {}".format(subdir, a))
 
-# Flatten any nested directories - create symlinks from subdirectories to main directory
-for x in a:
-    if os.path.isdir(os.path.join(subdir, x)):
-        logger.info("Processing subdirectory: {}".format(x))
-        b = os.listdir(os.path.join(subdir, x))
-        for c in b:
-            # Skip CSV files
-            if c.lower().endswith(".csv"):
-                logger.info("Skipping CSV file: {}".format(c))
-                continue
+# Use os.walk to recursively find all TIFF files at any depth
+logger.info("Recursively searching for TIFF files to flatten directory structure")
+tiff_count = 0
+for root, dirs, files in os.walk(subdir):
+    # Skip the root directory itself
+    if root == subdir:
+        continue
 
-            src = os.path.join(subdir, x, c)
-            dst = os.path.join(subdir, c)
-            logger.info("Creating symlink: {} -> {}".format(src, dst))
+    for filename in files:
+        # Process only TIFF files, skip CSVs and others
+        if filename.lower().endswith((".tif", ".tiff")):
+            src = os.path.join(root, filename)
+            dst = os.path.join(subdir, filename)
+
             # Check if destination exists
             if os.path.exists(dst) or os.path.islink(dst):
                 logger.info("Destination already exists, skipping: {}".format(dst))
             else:
+                logger.info("Creating symlink: {} -> {}".format(src, dst))
                 os.symlink(src, dst)
+                tiff_count += 1
+
+logger.info("Created {} symlinks to TIFF files".format(tiff_count))
 
 # Confirm completion of directory setup
 if not confirm_continue("Directory setup complete. Proceed to analyze files?"):

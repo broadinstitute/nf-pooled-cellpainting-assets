@@ -34,7 +34,11 @@
       "Bash(./qc_stitch_visual.py:*)",
       "Bash(PIPELINE_STEP=5 docker-compose run --rm cellprofiler)",
       "Bash(PIPELINE_STEP=1 docker-compose run --rm cellprofiler)",
-      "Bash(PIPELINE_STEP=1_qc_illum docker-compose run --rm qc)"
+      "Bash(PIPELINE_STEP=1_qc_illum docker-compose run --rm qc)",
+      "Bash(./scripts/montage.py data/Source1/Batch1/illum/Plate1 test_illum_painting_new.png painting Plate1)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(./scripts/montage.py:*)"
     ],
     "deny": [],
     "ask": [],

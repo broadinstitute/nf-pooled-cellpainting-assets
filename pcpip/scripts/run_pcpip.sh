@@ -66,7 +66,7 @@ declare -A PIPELINE_CONFIG=(
   # Output directory patterns
   [1,output]="illum/PLATE"
   [2,output]="images_corrected/painting/PLATE/PLATE-WELL-SITE"
-  [3,output]="images_segmentation/PLATE/PLATE-WELL"
+  [3,output]="images_segmentation/painting/PLATE/PLATE-WELL"
   [5,output]="illum/PLATE"
   [6,output]="images_aligned/barcoding/PLATE/PLATE-WELL-SITE"
   [7,output]="images_corrected/barcoding/PLATE/PLATE-WELL-SITE"
@@ -384,12 +384,14 @@ if should_run_step 1; then
   PIPELINE=1
   run_pipeline $PIPELINE
 fi
+wait
 
 # 1_qc_illum - QC for Cell Painting illumination
 if should_run_step 1_qc_illum; then
   echo "Running QC for Pipeline 1: Illumination Montage"
   run_qc_check "1_qc_illum"
 fi
+wait
 
 # 2_CP_Apply_Illum - PLATE, WELL
 if should_run_step 2; then

@@ -1,6 +1,15 @@
 # ruff: noqa: ANN002,ANN003,ANN202,ANN204,ANN401,D100,D104,D202,D400,D413,D415,E501,F401,F541,F821,F841,I001,N803,N806,N816,PTH102,PTH104,PTH110,PTH112,PTH113,PTH114,PTH115,PTH118,PTH123,UP015,UP024,UP031,UP035,W605,E722
 """Script for stitching and cropping microscopy images using ImageJ/Fiji.
 
+IMPORTANT: This script runs in Jython 2.7 (Python 2-like) environment within Fiji/ImageJ.
+Many Python 3+ features are NOT available:
+- No f-strings (use .format() instead)
+- No FileNotFoundError (use OSError/IOError instead)
+- No pathlib (use os.path instead)
+- No type hints
+- Limited standard library support
+Keep all code compatible with Python 2.7/Jython when making changes.
+
 This script:
 1. Takes multi-site microscopy images from each well
 2. Stitches them together into a full well image
@@ -431,14 +440,30 @@ if os.path.isdir(subdir):
             # Get the plate ID for this well
             plate_id = well_to_plate.get(eachwell, "UnknownPlate")
 
-            # Create well-specific output directories
+            # Create well-specific output directories with PLATE nesting
             # Use Plate-Well format (e.g., Plate1-A1) for directory names
             well_dir_name = "{}-{}".format(plate_id, eachwell)  # e.g., "Plate1-A1"
-            well_out_subdir = os.path.join(outfolder, well_dir_name)
-            well_tile_subdir = os.path.join(tile_outdir, well_dir_name)
-            well_downsample_subdir = os.path.join(downsample_outdir, well_dir_name)
 
-            # Create directories if they don't exist
+            # Add PLATE nesting for all output directories (e.g., Plate1/Plate1-A1)
+            plate_out_subdir = os.path.join(outfolder, plate_id)
+            plate_tile_subdir = os.path.join(tile_outdir, plate_id)
+            plate_downsample_subdir = os.path.join(downsample_outdir, plate_id)
+
+            well_out_subdir = os.path.join(plate_out_subdir, well_dir_name)
+            well_tile_subdir = os.path.join(plate_tile_subdir, well_dir_name)
+            well_downsample_subdir = os.path.join(
+                plate_downsample_subdir, well_dir_name
+            )
+
+            # Create plate directories first
+            if not os.path.exists(plate_out_subdir):
+                os.mkdir(plate_out_subdir)
+            if not os.path.exists(plate_tile_subdir):
+                os.mkdir(plate_tile_subdir)
+            if not os.path.exists(plate_downsample_subdir):
+                os.mkdir(plate_downsample_subdir)
+
+            # Then create well directories
             if not os.path.exists(well_out_subdir):
                 os.mkdir(well_out_subdir)
             if not os.path.exists(well_tile_subdir):
@@ -688,7 +713,7 @@ for eachlogfile in ["TileConfiguration.txt"]:
             os.path.join(outfolder, eachlogfile),
         )
         logger.info("Moved {} to output directory".format(eachlogfile))
-    except FileNotFoundError:
+    except (OSError, IOError):  # Python 2/Jython compatibility
         logger.warning("Could not find TileConfiguration.txt in {}".format(subdir))
         # Create an empty file if it doesn't exist (for testing purposes)
         if not os.path.exists(os.path.join(outfolder, eachlogfile)):

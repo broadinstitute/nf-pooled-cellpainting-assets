@@ -82,7 +82,7 @@ services:
 
   # Minimal QC service with Pixi
   qc:
-    image: ghcr.io/prefix-dev/pixi:latest
+    image: community.wave.seqera.io/library/python_loguru_matplotlib_numpy_typer:9378cf9abd25cf72
     platform: linux/amd64
     container_name: pcpip-qc
     volumes:
@@ -98,7 +98,7 @@ services:
     tty: true
 
   qc-shell:
-    image: ghcr.io/prefix-dev/pixi:latest
+    image: community.wave.seqera.io/library/python_loguru_matplotlib_numpy_typer:9378cf9abd25cf72
     platform: linux/amd64
     container_name: pcpip-qc-shell
     volumes:

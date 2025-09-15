@@ -153,7 +153,7 @@ declare -A QC_CONFIG=(
   [1_qc_illum,output_type]="file"  # 'file' or 'dir'
   [1_qc_illum,output_name]="montage.png"  # Name for single file outputs
   [1_qc_illum,log]="1_qc_illum_PLATE"
-  [1_qc_illum,type]="painting"
+  [1_qc_illum,type]="CP"
   [1_qc_illum,extra_args]=""  # Additional arguments if needed
 
   # QC after Pipeline 5 - Barcoding Illumination
@@ -163,7 +163,7 @@ declare -A QC_CONFIG=(
   [5_qc_illum,output_type]="file"
   [5_qc_illum,output_name]="montage.png"
   [5_qc_illum,log]="5_qc_illum_PLATE"
-  [5_qc_illum,type]="barcoding"
+  [5_qc_illum,type]="SBS"
   [5_qc_illum,extra_args]=""
 
   # QC after Pipeline 4 - Cell Painting Stitching

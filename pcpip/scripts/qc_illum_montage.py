@@ -1,4 +1,4 @@
-#!/usr/bin/env -S pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python
+#!/usr/bin/env python
 """
 qc_illum_montage.py - Create visual montage of illumination correction functions
 
@@ -6,14 +6,15 @@ Purpose: Visualize illumination correction functions from CellProfiler pipelines
          to verify they appear "vaguely circular and vaguely smooth" as expected.
 
 Usage:
-    pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python qc_illum_montage.py /path/to/illum montage.png painting Plate1
-    ./qc_illum_montage.py /path/to/illum montage.png painting Plate1
-    ./qc_illum_montage.py --help
+    python qc_illum_montage.py /path/to/illum montage.png CP Plate1
+    ./qc_illum_montage.py /path/to/illum montage.png CP Plate1
+    ./qc_illum_montage.py --helpq
 """
 
 import sys
 from pathlib import Path
 from typing import Dict, Tuple, Optional, List
+import re
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -40,7 +41,7 @@ def load_illumination_files(
     Args:
         input_dir: Directory containing illumination .npy files
         plate: Plate identifier (e.g., 'Plate1')
-        pipeline_type: 'painting' or 'barcoding'
+        pipeline_type: 'CP' or 'SBS'
         channels: List of channels to process (defaults based on pipeline type)
         cycles: List of cycles to process (for barcoding only)
 
@@ -51,10 +52,10 @@ def load_illumination_files(
     """
     illum_data = {}
 
-    if pipeline_type == "painting":
+    if pipeline_type == "CP":
         # Cell Painting pattern: {Plate}_Illum{Channel}.npy
         if channels is None:
-            channels = ["DNA", "Phalloidin", "CHN2"]  # Default channels
+            channels = ["DNA", "Phalloidin", "CHN2-AF488"]  # Default channels
 
         logger.info(f"Processing channels: {', '.join(channels)}")
 
@@ -71,10 +72,10 @@ def load_illumination_files(
             else:
                 logger.debug(f"File not found: {file_path.name}")
 
-    elif pipeline_type == "barcoding":
+    elif pipeline_type == "SBS":
         # Barcoding pattern: {Plate}_Cycle{N}_Illum{Channel}.npy
         if channels is None:
-            channels = ["DNA", "A", "C", "G", "T"]  # Default channels
+            channels = ["A", "C", "G", "T", "DAPI"]  # Updated default channels for SBS
         if cycles is None:
             cycles = [1, 2, 3]  # Default cycles
 
@@ -272,6 +273,71 @@ def parse_cycles(value: str) -> List[int]:
     return sorted(set(cycles))  # Remove duplicates and sort
 
 
+def auto_detect_channels(input_dir: Path, plate: str, pipeline_type: str) -> List[str]:
+    """Automatically detect channel names from .npy filenames.
+
+    Args:
+        input_dir: Directory containing illumination .npy files
+        plate: Plate identifier (e.g., 'Plate1')
+        pipeline_type: 'CP' or 'SBS'
+
+    Returns:
+        List of detected channel names
+    """
+    channels = set()
+
+    if pipeline_type == "CP":
+        # Pattern: {Plate}_Illum{Channel}.npy
+        pattern = re.compile(rf"{re.escape(plate)}_Illum(.+)\.npy$")
+
+        for file_path in input_dir.glob(f"{plate}_Illum*.npy"):
+            match = pattern.match(file_path.name)
+            if match:
+                channel = match.group(1)
+                channels.add(channel)
+                logger.debug(f"Detected channel: {channel} from {file_path.name}")
+
+    elif pipeline_type == "SBS":
+        # Pattern: {Plate}_Cycle{N}_Illum{Channel}.npy
+        pattern = re.compile(rf"{re.escape(plate)}_Cycle\d+_Illum(.+)\.npy$")
+        glob_pattern = f"{plate}_Cycle*_Illum*.npy"
+
+        logger.debug(f"Looking for files with pattern: {glob_pattern}")
+        logger.debug(f"Using regex pattern: {pattern.pattern}")
+        logger.debug(f"Input directory: {input_dir}")
+        logger.debug(f"Input directory exists: {input_dir.exists()}")
+
+        # List all files in directory for debugging
+        all_files = list(input_dir.iterdir())
+        logger.debug(f"All files in directory ({len(all_files)}): {[f.name for f in all_files if f.is_file()]}")
+
+        found_files = list(input_dir.glob(glob_pattern))
+        logger.debug(f"Found {len(found_files)} files matching glob pattern")
+
+        if found_files:
+            logger.debug(f"Files found: {[f.name for f in found_files]}")
+        else:
+            logger.debug("No files found with glob pattern")
+
+        for file_path in found_files:
+            filename = file_path.name
+            logger.debug(f"Checking file: {filename}")
+            match = pattern.match(filename)
+            if match:
+                channel = match.group(1)
+                channels.add(channel)
+                logger.debug(f"Detected channel: {channel} from {filename}")
+            else:
+                logger.debug(f"File {filename} did not match regex pattern")
+                # Additional debug: show what we're trying to match
+                logger.debug(f"Pattern: {pattern.pattern}")
+                logger.debug(f"Filename: {filename}")
+
+    channel_list = sorted(list(channels))
+    logger.info(f"Auto-detected {len(channel_list)} channels: {', '.join(channel_list)}")
+    return channel_list
+
+
 @app.command()
 def main(
     input_dir: Annotated[
@@ -281,7 +347,7 @@ def main(
         Path, typer.Argument(help="Output file path for montage (PNG or PDF)")
     ],
     pipeline_type: Annotated[
-        str, typer.Argument(help="Pipeline type: 'painting' or 'barcoding'")
+        str, typer.Argument(help="Pipeline type: 'CP' or 'SBS'")
     ],
     plate: Annotated[str, typer.Argument(help="Plate identifier (e.g., Plate1)")],
     channels: Annotated[
@@ -289,16 +355,24 @@ def main(
         typer.Option(
             "--channels",
             "-c",
-            help="Comma-separated list of channels (e.g., 'DNA,Phalloidin,CHN2' for painting or 'DNA,A,C,G,T' for barcoding)",
+            help="Comma-separated list of channels (e.g., 'DNA,Phalloidin,CHN2' for CP or 'DNA,A,C,G,T' for SBS)",
         ),
     ] = None,
     cycles: Annotated[
         Optional[str],
         typer.Option(
             "--cycles",
-            help="Comma-separated list of cycles or ranges for barcoding (e.g., '1,2,3' or '1-3,5')",
+            help="Comma-separated list of cycles or ranges for SBS (e.g., '1,2,3' or '1-3,5')",
         ),
     ] = None,
+    auto_channels: Annotated[
+        bool,
+        typer.Option(
+            "--auto-channels",
+            "-a",
+            help="Automatically detect channel names from .npy filenames instead of using defaults or --channels"
+        )
+    ] = False,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Enable verbose logging")
     ] = False,
@@ -316,8 +390,14 @@ def main(
         # Custom channels for painting
         ./qc_illum_montage.py data/illum output.png painting Plate1 --channels DNA,Phalloidin
 
+        # Auto-detect channels for painting
+        ./qc_illum_montage.py data/illum output.png painting Plate1 --auto-channels
+
         # Custom cycles and channels for barcoding
         ./qc_illum_montage.py data/illum output.png barcoding Plate1 --cycles 1-3 --channels DNA,A,C
+
+        # Auto-detect channels with custom cycles for barcoding
+        ./qc_illum_montage.py data/illum output.png barcoding Plate1 --cycles 1-3 --auto-channels
     """
 
     # Enable debug logging if verbose
@@ -326,9 +406,9 @@ def main(
         logger.add(sys.stderr, level="DEBUG")
 
     # Validate pipeline type
-    if pipeline_type not in ["painting", "barcoding"]:
+    if pipeline_type not in ["CP", "SBS"]:
         logger.error(
-            f"Invalid pipeline type: {pipeline_type}. Must be 'painting' or 'barcoding'"
+            f"Invalid pipeline type: {pipeline_type}. Must be 'CP' or 'SBS'"
         )
         raise typer.Exit(code=1)
 
@@ -338,7 +418,16 @@ def main(
         raise typer.Exit(code=1)
 
     # Parse channel and cycle options
-    channel_list = parse_channels(channels) if channels else None
+    if auto_channels:
+        if channels:
+            logger.warning("--auto-channels flag overrides --channels option")
+        channel_list = auto_detect_channels(input_dir, plate, pipeline_type)
+        if not channel_list:
+            logger.error(f"No channels auto-detected for {plate} in {input_dir}")
+            raise typer.Exit(code=1)
+    else:
+        channel_list = parse_channels(channels) if channels else None
+
     cycle_list = parse_cycles(cycles) if cycles else None
 
     # Warn if cycles specified for painting pipeline
@@ -365,7 +454,7 @@ def main(
     logger.info(f"Found {len(illum_data)} illumination function(s)")
 
     # Create appropriate montage
-    if pipeline_type == "painting":
+    if pipeline_type == "CP":
         create_painting_montage(illum_data, output_file, plate)
     else:
         create_barcoding_montage(illum_data, output_file, plate)

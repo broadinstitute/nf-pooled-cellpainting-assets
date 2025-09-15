@@ -1,14 +1,14 @@
 #!/usr/bin/env -S pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python
 """
-qc_illum_montage.py - Create visual montage of illumination correction functions
+montage.py - Create visual montage of images
 
 Purpose: Visualize illumination correction functions from CellProfiler pipelines
          to verify they appear "vaguely circular and vaguely smooth" as expected.
 
 Usage:
-    pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python qc_illum_montage.py /path/to/illum montage.png painting Plate1
-    ./qc_illum_montage.py /path/to/illum montage.png painting Plate1
-    ./qc_illum_montage.py --help
+    pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python montage.py /path/to/illum montage.png painting Plate1
+    ./montage.py /path/to/illum montage.png painting Plate1
+    ./montage.py --help
 """
 
 import sys
@@ -311,13 +311,13 @@ def main(
 
     Examples:
         # Default channels for painting
-        ./qc_illum_montage.py data/illum output.png painting Plate1
+        ./montage.py data/illum output.png painting Plate1
 
         # Custom channels for painting
-        ./qc_illum_montage.py data/illum output.png painting Plate1 --channels DNA,Phalloidin
+        ./montage.py data/illum output.png painting Plate1 --channels DNA,Phalloidin
 
         # Custom cycles and channels for barcoding
-        ./qc_illum_montage.py data/illum output.png barcoding Plate1 --cycles 1-3 --channels DNA,A,C
+        ./montage.py data/illum output.png barcoding Plate1 --cycles 1-3 --channels DNA,A,C
     """
 
     # Enable debug logging if verbose

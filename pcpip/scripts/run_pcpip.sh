@@ -147,9 +147,9 @@ declare -A STITCH_CONFIG=(
 # Define QC check configurations
 declare -A QC_CONFIG=(
   # QC after Pipeline 1 - Cell Painting Illumination
-  [1_qc_illum,script]="qc_illum_montage.py"
+  [1_qc_illum,script]="montage.py"
   [1_qc_illum,input]="illum/PLATE"
-  [1_qc_illum,output]="qc_reports/1_illumination_cp/PLATE"
+  [1_qc_illum,output]="../workspace/qc_reports/1_illumination_cp/PLATE"
   [1_qc_illum,output_type]="file"  # 'file' or 'dir'
   [1_qc_illum,output_name]="montage.png"  # Name for single file outputs
   [1_qc_illum,log]="1_qc_illum_PLATE"
@@ -157,9 +157,9 @@ declare -A QC_CONFIG=(
   [1_qc_illum,extra_args]=""  # Additional arguments if needed
 
   # QC after Pipeline 5 - Barcoding Illumination
-  [5_qc_illum,script]="qc_illum_montage.py"
+  [5_qc_illum,script]="montage.py"
   [5_qc_illum,input]="illum/PLATE"
-  [5_qc_illum,output]="qc_reports/5_illumination_bc/PLATE"
+  [5_qc_illum,output]="../workspace/qc_reports/5_illumination_bc/PLATE"
   [5_qc_illum,output_type]="file"
   [5_qc_illum,output_name]="montage.png"
   [5_qc_illum,log]="5_qc_illum_PLATE"

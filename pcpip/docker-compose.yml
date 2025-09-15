@@ -16,6 +16,7 @@ services:
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
       - PIPELINE_STEP=${PIPELINE_STEP}
+      - CROP_PERCENT=${CROP_PERCENT}
       - JAVA_OPTS=-Xmx2G
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
@@ -38,6 +39,7 @@ services:
       - DISPLAY=
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
+      - CROP_PERCENT=${CROP_PERCENT}
     stdin_open: true
     tty: true
     profiles:
@@ -58,6 +60,7 @@ services:
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
       - PIPELINE_STEP=${PIPELINE_STEP}
+      - CROP_PERCENT=${CROP_PERCENT}
     stdin_open: true
     tty: true
 
@@ -75,6 +78,7 @@ services:
       - DISPLAY=
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
+      - CROP_PERCENT=${CROP_PERCENT}
     stdin_open: true
     tty: true
     profiles:

@@ -30,16 +30,22 @@ git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
 # 2. Get test data (~3GB)
 aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
 
-# 3. Run complete workflow with QC
+# 3. (Optional) Crop images for faster processing
+# Overwrites originals - re-download from S3 to restore
+# Options: 25 (fastest), 50 (balanced), 75 (conservative)
+CROP_PERCENT=25 docker-compose run --rm cellprofiler python3 /app/scripts/crop_preprocess.py
+
+# 4. Run complete workflow with QC
+# Note: Stitching steps use CROP_PERCENT to adjust tile dimensions - use the same value as above!
 PIPELINE_STEP=1 docker-compose run --rm cellprofiler
 PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
 PIPELINE_STEP="2,3" docker-compose run --rm cellprofiler
-PIPELINE_STEP=4 docker-compose run --rm fiji
+CROP_PERCENT=25 PIPELINE_STEP=4 docker-compose run --rm fiji
 
 PIPELINE_STEP=5 docker-compose run --rm cellprofiler
 PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
 PIPELINE_STEP="6,7" docker-compose run --rm cellprofiler
-PIPELINE_STEP=8 docker-compose run --rm fiji
+CROP_PERCENT=25 PIPELINE_STEP=8 docker-compose run --rm fiji
 
 PIPELINE_STEP=9 docker-compose run --rm cellprofiler
 ```

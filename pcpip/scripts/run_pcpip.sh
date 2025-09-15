@@ -109,13 +109,13 @@ declare -A PIPELINE_CONFIG=(
   [9,metadata]="true"
 
   # Run in background (true/false) - memory-heavy pipelines run sequentially
-  [1,background]="false"
+  [1,background]="true" # true is fine for 25% CROPS but false otherwise
   [2,background]="true"
   [3,background]="true"
   [5,background]="true"
-  [6,background]="false"
-  [7,background]="false"
-  [9,background]="false"
+  [6,background]="true" # true is fine for 25% CROPS but false otherwise
+  [7,background]="true" # true is fine for 25% CROPS but false otherwise
+  [9,background]="true" # true is fine for 25% CROPS but false otherwise
 
   # Needs plugins (true/false)
   [1,plugins]="false"

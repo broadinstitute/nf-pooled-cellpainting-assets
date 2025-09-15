@@ -89,14 +89,47 @@ localtemp = "/tmp/FIJI_temp"  # Temporary directory
 # Grid stitching parameters
 rows = "2"  # Number of rows in the site grid
 columns = "2"  # Number of columns in the site grid
-size = "1480"  # Base size of input images (pixels)
+
+# Dynamically set size based on crop percentage (default to 25% crop)
+# Original images are 1600x1600, after crop:
+# - 25% crop (CROP_PERCENT=25): 400x400
+# - 50% crop (CROP_PERCENT=50): 800x800
+# - No crop: ~1480x1480 (with some built-in crop)
+crop_percent_str = os.getenv("CROP_PERCENT", "25")
+if not crop_percent_str:  # Handle empty string case
+    crop_percent_str = "25"
+crop_percent = int(crop_percent_str)
+if crop_percent == 25:
+    size = "400"
+    final_tile_size = "800"
+    logger.info(
+        "=== CROP_PERCENT=25 detected: Using 400x400 input images, 800x800 output tiles ==="
+    )
+elif crop_percent == 50:
+    size = "800"
+    final_tile_size = "1600"
+    logger.info(
+        "=== CROP_PERCENT=50 detected: Using 800x800 input images, 1600x1600 output tiles ==="
+    )
+else:
+    # Default/no crop
+    size = "1480"
+    final_tile_size = "2960"
+    logger.info(
+        "=== No crop/default: Using 1480x1480 input images, 2960x2960 output tiles ==="
+    )
+
+logger.info(
+    "Configuration: Input size={}x{}, Final tile size={}x{}".format(
+        size, size, final_tile_size, final_tile_size
+    )
+)
 overlap_pct = "10"  # Percentage overlap between adjacent images
 
 # Tiling parameters
 tileperside = "2"  # Number of tiles to create per side when cropping
 scalingstring = "1.99"  # Scaling factor to apply to images
 round_or_square = "square"  # Shape of the well (square or round)
-final_tile_size = "2960"  # Final tile size after scaling (pixels)
 xoffset_tiles = "0"  # X offset for tile cropping
 yoffset_tiles = "0"  # Y offset for tile cropping
 compress = "True"  # Whether to compress output TIFF files
@@ -479,6 +512,14 @@ if os.path.isdir(subdir):
                 )
                 # Get the resulting stitched image
                 im = IJ.getImage()
+
+                # Log the actual stitched image dimensions to verify correct size
+                expected_size = int(rows) * int(size)
+                logger.info(
+                    "=== Actual stitched dimensions: {}x{} (expected ~{}x{}) ===".format(
+                        im.width, im.height, expected_size, expected_size
+                    )
+                )
 
                 # Calculate dimensions for scaling
                 width = str(int(round(im.width * float(scalingstring))))

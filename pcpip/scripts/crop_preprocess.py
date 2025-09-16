@@ -67,9 +67,19 @@ def crop_image(img_path, crop_percent):
 
 
 def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Crop OME-TIFF images to reduce size")
+    parser.add_argument("--input_dir", default="/app/data/Source1/Batch1/images",
+                        help="Input directory containing images")
+    parser.add_argument("--output_dir", default=None,
+                        help="Output directory (if not specified, crops in-place)")
+    args = parser.parse_args()
+    
     # Configuration
     crop_percent = int(os.environ.get("CROP_PERCENT", "50"))
-    images_base = "/app/data/Source1/Batch1/images"
+    images_base = args.input_dir
+    output_base = args.output_dir or images_base
 
     print("===========================================")
     print("  Image Cropping Preprocessing")
@@ -98,6 +108,14 @@ def main():
         # Get relative path for display
         rel_path = os.path.relpath(img_path, images_base)
         print(f"[{processed}/{total_files}] Processing: {rel_path}")
+        
+        # If output_dir specified, copy to new location
+        if output_base != images_base:
+            import shutil
+            out_path = os.path.join(output_base, rel_path)
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            shutil.copy2(img_path, out_path)
+            img_path = out_path
 
         if crop_image(img_path, crop_percent):
             print("  ✓ Successfully cropped")
@@ -117,11 +135,14 @@ def main():
         sys.exit(1)
 
     print()
-    print("Images have been cropped in-place.")
-    print("To restore original images, re-download from S3:")
-    print(
-        "  aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request"
-    )
+    if output_base != images_base:
+        print(f"Images have been cropped and saved to: {output_base}")
+    else:
+        print("Images have been cropped in-place.")
+        print("To restore original images, re-download from S3:")
+        print(
+            "  aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request"
+        )
 
 
 if __name__ == "__main__":

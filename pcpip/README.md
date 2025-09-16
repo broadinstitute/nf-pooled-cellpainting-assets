@@ -279,6 +279,41 @@ uv run scripts/check_csv_files.py /tmp/load_data_pipeline9_cropped_A1.csv
 
 ### Maintainer Notes
 
+#### Creating and Uploading Cropped Input Datasets
+
+To create a pre-cropped input dataset for faster testing:
+
+```bash
+# Step 1: Download original input data to a temp location (NOT the working data/ directory)
+mkdir -p /tmp/pcpip-input
+aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ /tmp/pcpip-input/ \
+  --no-sign-request
+
+# Step 2: Run cropping to create a 25% size version
+mkdir -p /tmp/pcpip-input-cropped
+docker-compose run --rm \
+  -e CROP_PERCENT=25 \
+  -v /tmp/pcpip-input:/input:ro \
+  -v /tmp/pcpip-input-cropped:/output \
+  cellprofiler-shell \
+  python /app/scripts/crop_preprocess.py \
+    --input_dir /input/Source1/Batch1/images \
+    --output_dir /output/Source1/Batch1/images
+
+# Step 3: Upload cropped INPUT dataset to S3 (as a new input dataset, not output)
+
+# Set your AWS profile (if needed)
+export AWS_PROFILE=your-profile-name  # Or configure AWS credentials as appropriate
+
+aws s3 sync /tmp/pcpip-input-cropped/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1_sub25/ \
+  --size-only
+
+# Step 4: Clean up temp directories
+rm -rf /tmp/pcpip-input /tmp/pcpip-input-cropped
+```
+
+Users can then switch between full and cropped input datasets by changing the dataset path in their configuration from `fix-s1/` to `fix-s1_sub25/`.
+
 #### Uploading Results to S3
 
 To share pipeline outputs for reproducibility:

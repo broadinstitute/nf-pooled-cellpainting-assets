@@ -21,7 +21,7 @@ Workflow Logic:
       - Expects files: {Plate}_Cycle{N}_Illum{Channel}.npy
       - Default channels: DNA, A, C, G, T
       - Default cycles: 1, 2, 3
-      - Output: Grid montage (cycles × channels)
+      - Output: Grid montage (cycles x channels)
 
    c) generic: Flexible pattern-based file discovery
       - Accepts any file pattern (*.png, *.npy, etc.)
@@ -53,9 +53,9 @@ Key Design Decisions:
 - Defaults provided for common use cases
 
 Usage:
-    pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python montage.py /path/to/illum montage.png illum_painting Plate1
-    ./montage.py /path/to/illum montage.png illum_painting Plate1
-    ./montage.py /path/to/images montage.png generic Plate1 --pattern "*.png"
+    pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python montage.py /path/to/illum/Plate1 montage.png illum_painting
+    ./montage.py /path/to/illum/Plate1 montage.png illum_painting
+    ./montage.py /path/to/images/Plate1-A1 montage.png generic --pattern "*.png"
     ./montage.py --help
 """
 
@@ -100,7 +100,7 @@ def load_file(file_path: Path) -> np.ndarray:
 
 def load_image_files(
     input_dir: Path,
-    plate: str,
+    identifier: str,
     pipeline_type: str,
     channels: Optional[List[str]] = None,
     cycles: Optional[List[int]] = None,
@@ -111,7 +111,7 @@ def load_image_files(
 
     Args:
         input_dir: Directory containing image files
-        plate: Plate identifier (e.g., 'Plate1')
+        identifier: Identifier for file matching (e.g., 'Plate1' for illumination, 'Plate1-A1' for wells)
         pipeline_type: 'illum_painting', 'illum_barcoding', or 'generic'
         channels: List of channels to process (defaults based on pipeline type)
         cycles: List of cycles to process (for barcoding only)
@@ -133,7 +133,7 @@ def load_image_files(
             return image_data
 
         for channel in channels:
-            file_pattern = f"{plate}_Illum{channel}.npy"
+            file_pattern = f"{identifier}_Illum{channel}.npy"
             file_path = input_dir / file_pattern
 
             if file_path.exists():
@@ -215,7 +215,7 @@ def load_image_files(
 
         for cycle in cycles:
             for channel in channels:
-                file_pattern = f"{plate}_Cycle{cycle}_Illum{channel}.npy"
+                file_pattern = f"{identifier}_Cycle{cycle}_Illum{channel}.npy"
                 file_path = input_dir / file_pattern
 
                 if file_path.exists():
@@ -291,7 +291,7 @@ def prepare_image_for_display(array: np.ndarray, apply_sqrt: bool = False):
 def create_simple_montage(
     image_data: Dict[str, np.ndarray],
     output_file: Path,
-    plate: str,
+    identifier: str,
     apply_sqrt: bool = True,
     title_suffix: str = "Illumination Correction Functions",
 ) -> None:
@@ -301,7 +301,7 @@ def create_simple_montage(
     Args:
         image_data: Dictionary {channel: array}
         output_file: Path to save montage
-        plate: Plate identifier for title
+        identifier: Identifier for title (e.g., 'Plate1' or 'Plate1-A1')
         apply_sqrt: Whether to apply sqrt transform
         title_suffix: Suffix for the title (e.g., "Illumination Correction Functions" or "Segmentation Check")
     """
@@ -339,7 +339,7 @@ def create_simple_montage(
 
     # Add overall title
     fig.suptitle(
-        f"{title_suffix} - {plate}",
+        f"{title_suffix} - {identifier}",
         fontsize=14,
         fontweight="bold",
     )
@@ -354,7 +354,7 @@ def create_simple_montage(
 def create_barcoding_montage(
     image_data: Dict[Tuple[int, str], np.ndarray],
     output_file: Path,
-    plate: str,
+    identifier: str,
     apply_sqrt: bool = True,
     title_suffix: str = "Illumination Correction Functions (Barcoding)",
 ) -> None:
@@ -364,7 +364,7 @@ def create_barcoding_montage(
     Args:
         image_data: Dictionary {(cycle, channel): array}
         output_file: Path to save montage
-        plate: Plate identifier for title
+        identifier: Identifier for title (e.g., 'Plate1')
         apply_sqrt: Whether to apply sqrt transform
         title_suffix: Suffix for the title
     """
@@ -422,7 +422,7 @@ def create_barcoding_montage(
 
     # Add overall title
     fig.suptitle(
-        f"{title_suffix} - {plate}",
+        f"{title_suffix} - {identifier}",
         fontsize=14,
         fontweight="bold",
     )
@@ -465,7 +465,6 @@ def main(
             help="Pipeline type: 'illum_painting', 'illum_barcoding', or 'generic'"
         ),
     ],
-    plate: Annotated[str, typer.Argument(help="Plate identifier (e.g., Plate1)")],
     channels: Annotated[
         Optional[str],
         typer.Option(
@@ -504,17 +503,17 @@ def main(
     For illumination functions, applies sqrt transform for better visibility.
 
     Examples:
-        # Illumination functions for Cell Painting
-        ./montage.py data/illum output.png illum_painting Plate1
+        # Illumination functions for Cell Painting (identifier extracted from path: 'Plate1')
+        ./montage.py data/illum/Plate1 output.png illum_painting
 
-        # Generic images (segmentation, etc.)
-        ./montage.py data/segmentation/Plate1-A1 output.png generic Plate1-A1 --pattern "*.png"
+        # Generic images for segmentation (identifier extracted from path: 'Plate1-A1')
+        ./montage.py data/segmentation/Plate1-A1 output.png generic --pattern "*.png"
 
         # Custom channels for illumination
-        ./montage.py data/illum output.png illum_painting Plate1 --channels DNA,Phalloidin
+        ./montage.py data/illum/Plate1 output.png illum_painting --channels DNA,Phalloidin
 
         # Barcoding illumination with custom cycles
-        ./montage.py data/illum output.png illum_barcoding Plate1 --cycles 1-3 --channels DNA,A,C
+        ./montage.py data/illum/Plate1 output.png illum_barcoding --cycles 1-3 --channels DNA,A,C
     """
 
     # Enable debug logging if verbose
@@ -533,6 +532,9 @@ def main(
     if not input_dir.exists():
         logger.error(f"Input directory does not exist: {input_dir}")
         raise typer.Exit(code=1)
+
+    # Extract identifier from input directory name
+    identifier = input_dir.name
 
     # Parse channel and cycle options with mode-specific defaults
     if channels:
@@ -572,15 +574,20 @@ def main(
 
     logger.info(f"Processing in {pipeline_type} mode")
     logger.info(f"Input directory: {input_dir}")
-    logger.info(f"Plate: {plate}")
+    logger.info(f"Identifier: {identifier}")
 
     # Load image data
     image_data = load_image_files(
-        input_dir, plate, pipeline_type, channel_list, cycle_list, file_pattern=pattern
+        input_dir,
+        identifier,
+        pipeline_type,
+        channel_list,
+        cycle_list,
+        file_pattern=pattern,
     )
 
     if not image_data:
-        logger.error(f"No image files found for {plate} in {input_dir}")
+        logger.error(f"No image files found for {identifier} in {input_dir}")
         raise typer.Exit(code=1)
 
     logger.info(f"Found {len(image_data)} image(s)")
@@ -590,7 +597,7 @@ def main(
         create_simple_montage(
             image_data,
             output_file,
-            plate,
+            identifier,
             apply_sqrt=apply_sqrt,
             title_suffix="Illumination Correction Functions (Cell Painting)",
         )
@@ -598,12 +605,14 @@ def main(
         create_simple_montage(
             image_data,
             output_file,
-            plate,
+            identifier,
             apply_sqrt=apply_sqrt,
             title_suffix="Image Montage",
         )
     else:  # illum_barcoding
-        create_barcoding_montage(image_data, output_file, plate, apply_sqrt=apply_sqrt)
+        create_barcoding_montage(
+            image_data, output_file, identifier, apply_sqrt=apply_sqrt
+        )
 
     logger.success("QC montage generation complete")
 

@@ -40,6 +40,7 @@ CROP_PERCENT=25 docker-compose run --rm cellprofiler python3 /app/scripts/crop_p
 PIPELINE_STEP=1 docker-compose run --rm cellprofiler
 PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
 PIPELINE_STEP="2,3" docker-compose run --rm cellprofiler
+PIPELINE_STEP=3_qc_seg docker-compose run --rm qc
 CROP_PERCENT=25 PIPELINE_STEP=4 docker-compose run --rm fiji
 
 PIPELINE_STEP=5 docker-compose run --rm cellprofiler
@@ -113,6 +114,9 @@ flowchart TD
     PCP1 -.-> QC1["QC: Illum Montage (Pixi)
     Verify circular & smooth"]
 
+    PCP3 -.-> QC3["QC: Segmentation Montage (Pixi)
+    Verify segmentation quality"]
+
     PCP5 -.-> QC5["QC: Illum Montage (Pixi)
     Verify circular & smooth"]
 
@@ -123,7 +127,7 @@ flowchart TD
 
     class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP7A,PCP8Y,PCP9,PCP6A cellprofiler
     class PCP4,PCP8,PCP8Z fiji
-    class QC1,QC5 qc
+    class QC1,QC3,QC5 qc
 ```
 
 </details>

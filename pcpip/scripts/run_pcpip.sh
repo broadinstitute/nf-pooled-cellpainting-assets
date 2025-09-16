@@ -153,8 +153,18 @@ declare -A QC_CONFIG=(
   [1_qc_illum,output_type]="file"  # 'file' or 'dir'
   [1_qc_illum,output_name]="montage.png"  # Name for single file outputs
   [1_qc_illum,log]="1_qc_illum_PLATE"
-  [1_qc_illum,type]="painting"
+  [1_qc_illum,type]="illum_painting"
   [1_qc_illum,extra_args]=""  # Additional arguments if needed
+
+  # QC after Pipeline 3 - Segmentation Check
+  [3_qc_seg,script]="montage.py"
+  [3_qc_seg,input]="images_segmentation/painting/PLATE/PLATE-WELL"
+  [3_qc_seg,output]="../workspace/qc_reports/3_segmentation/PLATE/PLATE-WELL"
+  [3_qc_seg,output_type]="file"
+  [3_qc_seg,output_name]="montage.png"
+  [3_qc_seg,log]="3_qc_seg_PLATE_WELL"
+  [3_qc_seg,type]="generic"
+  [3_qc_seg,extra_args]="--pattern \"*SegmentCheck.png\""
 
   # QC after Pipeline 5 - Barcoding Illumination
   [5_qc_illum,script]="montage.py"
@@ -163,7 +173,7 @@ declare -A QC_CONFIG=(
   [5_qc_illum,output_type]="file"
   [5_qc_illum,output_name]="montage.png"
   [5_qc_illum,log]="5_qc_illum_PLATE"
-  [5_qc_illum,type]="barcoding"
+  [5_qc_illum,type]="illum_barcoding"
   [5_qc_illum,extra_args]=""
 
   # QC after Pipeline 4 - Cell Painting Stitching
@@ -326,8 +336,9 @@ run_qc_check() {
   mkdir -p "${output_dir}"
 
   # Build command - using the executable script directly (it has pixi shebang)
+  # Montage.py now extracts identifier from input directory name
   # Add extra_args at the end if specified
-  local cmd="/app/scripts/${script} \"${input_dir}\" \"${output_path}\" \"${qc_type}\" \"${PLATE}\""
+  local cmd="/app/scripts/${script} \"${input_dir}\" \"${output_path}\" \"${qc_type}\""
   if [[ -n "$extra_args" ]]; then
     cmd+=" ${extra_args}"
   fi
@@ -411,6 +422,15 @@ if should_run_step 3; then
   PIPELINE=3
   for WELL in "${WELLS[@]}"; do
       run_pipeline $PIPELINE
+  done
+  wait
+fi
+
+# 3_qc_seg - QC for Segmentation Check
+if should_run_step 3_qc_seg; then
+  echo "Running QC for Pipeline 3: Segmentation Montage"
+  for WELL in "${WELLS[@]}"; do
+      run_qc_check "3_qc_seg"
   done
   wait
 fi

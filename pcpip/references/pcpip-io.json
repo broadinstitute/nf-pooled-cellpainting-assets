@@ -53,13 +53,13 @@
                 "A",
                 "T",
                 "G",
-                "DAPI"
+                "DNA"
             ]
         },
         "cp_microscope_channel": {
             "type": "string",
             "enum": [
-                "DAPI",
+                "DNA",
                 "PhalloAF750",
                 "ZO1-AF488"
             ]
@@ -71,20 +71,20 @@
                 "A",
                 "T",
                 "G",
-                "DAPI"
+                "DNA"
             ]
         },
         "channel_mapping": {
             "cp": {
                 "microscope_mapping": {
-                    "DAPI": "DNA",
+                    "DNA": "DNA",
                     "PhalloAF750": "Phalloidin",
                     "ZO1-AF488": "ZO1"
                 }
             },
             "bc": {
                 "microscope_mapping": {
-                    "DAPI": "DAPI",
+                    "DNA": "DNA",
                     "A": "A",
                     "C": "C",
                     "G": "G",
@@ -452,7 +452,7 @@
             "input_file_location": "{batch}/images_corrected/barcoding",
             "subdir": "{batch}/images_corrected/barcoding/{plate}-{well}-{site}",
             "filterstring": "{well}",
-            "channame": "DAPI",
+            "channame": "DNA",
             "rows": "{barcoding_rows}",
             "columns": "{barcoding_columns}",
             "imperwell": "{barcoding_imperwell}",

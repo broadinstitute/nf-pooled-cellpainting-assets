@@ -1,9 +1,16 @@
-#!/usr/bin/env -S pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python
+#!/usr/bin/env python
 """
 montage.py - Create visual montage of images
 
 Purpose: Generate quality control montages for illumination correction functions,
          segmentation outputs, and other pipeline images.
+
+Environment Requirements:
+========================
+Docker: Runs directly with pre-installed dependencies
+Local:  Use pixi for dependency management:
+        pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python montage.py [args]
+        OR create a pixi task in pyproject.toml for convenience
 
 Workflow Logic:
 ===============
@@ -53,9 +60,14 @@ Key Design Decisions:
 - Defaults provided for common use cases
 
 Usage:
-    pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python montage.py /path/to/illum/Plate1 montage.png illum_painting
+    # Docker environment (dependencies pre-installed):
     ./montage.py /path/to/illum/Plate1 montage.png illum_painting
-    ./montage.py /path/to/images/Plate1-A1 montage.png generic --pattern "*.png"
+    python montage.py /path/to/images/Plate1-A1 montage.png generic --pattern "*.png"
+
+    # Local development with pixi:
+    pixi exec --spec python>=3.11 --spec loguru --spec typer --spec numpy --spec matplotlib -- python montage.py /path/to/illum/Plate1 montage.png illum_painting
+
+    # Help:
     ./montage.py --help
 """
 

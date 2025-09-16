@@ -70,7 +70,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Crop OME-TIFF images to reduce size")
-    parser.add_argument("--input_dir", default="/app/data/Source1/Batch1/images",
+    parser.add_argument("--input_dir", default="/app/data/Source1/images/Batch1/images",
                         help="Input directory containing images")
     parser.add_argument("--output_dir", default=None,
                         help="Output directory (if not specified, crops in-place)")

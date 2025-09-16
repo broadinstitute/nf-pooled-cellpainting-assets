@@ -55,11 +55,11 @@ declare -A PIPELINE_CONFIG=(
   [9,file]="ref_9_Analysis.cppipe"
 
   # Data files
-  [1,data]="load_data_pipeline1.csv"
-  [2,data]="load_data_pipeline2.csv"
+  [1,data]="load_data_pipeline1_revised.csv"
+  [2,data]="load_data_pipeline2_revised.csv"
   [3,data]="load_data_pipeline3_revised.csv"
-  [5,data]="load_data_pipeline5.csv"
-  [6,data]="load_data_pipeline6.csv"
+  [5,data]="load_data_pipeline5_revised.csv"
+  [6,data]="load_data_pipeline6_revised.csv"
   [7,data]="load_data_pipeline7_revised.csv"
   [9,data]="load_data_pipeline9_revised.csv"
 
@@ -70,7 +70,7 @@ declare -A PIPELINE_CONFIG=(
   [5,output]="illum/PLATE"
   [6,output]="images_aligned/barcoding/PLATE/PLATE-WELL-SITE"
   [7,output]="images_corrected/barcoding/PLATE/PLATE-WELL-SITE"
-  [9,output]="../workspace/analysis/Batch1/PLATE-WELL-SITE"
+  [9,output]="../../workspace/analysis/Batch1/PLATE-WELL-SITE"
 
   # Log filename patterns
   [1,log]="pipeline1_PLATE"
@@ -149,7 +149,7 @@ declare -A QC_CONFIG=(
   # QC after Pipeline 1 - Cell Painting Illumination (no Cycle in filename)
   [1_qc_illum,script]="montage.py"
   [1_qc_illum,input]="illum/PLATE"
-  [1_qc_illum,output]="../workspace/qc_reports/1_illumination_cp/PLATE"
+  [1_qc_illum,output]="../../workspace/qc_reports/1_illumination_cp/PLATE"
   [1_qc_illum,output_type]="file"  # 'file' or 'dir'
   [1_qc_illum,output_name]="montage.png"  # Name for single file outputs
   [1_qc_illum,log]="1_qc_illum_PLATE"
@@ -158,7 +158,7 @@ declare -A QC_CONFIG=(
   # QC after Pipeline 3 - Segmentation Check
   [3_qc_seg,script]="montage.py"
   [3_qc_seg,input]="images_segmentation/painting/PLATE/PLATE-WELL"
-  [3_qc_seg,output]="../workspace/qc_reports/3_segmentation/PLATE/PLATE-WELL"
+  [3_qc_seg,output]="../../workspace/qc_reports/3_segmentation/PLATE/PLATE-WELL"
   [3_qc_seg,output_type]="file"
   [3_qc_seg,output_name]="montage.png"
   [3_qc_seg,log]="3_qc_seg_PLATE_WELL"
@@ -167,7 +167,7 @@ declare -A QC_CONFIG=(
   # QC after Pipeline 5 - Barcoding Illumination (with Cycle in filename)
   [5_qc_illum,script]="montage.py"
   [5_qc_illum,input]="illum/PLATE"
-  [5_qc_illum,output]="../workspace/qc_reports/5_illumination_bc/PLATE"
+  [5_qc_illum,output]="../../workspace/qc_reports/5_illumination_bc/PLATE"
   [5_qc_illum,output_type]="file"
   [5_qc_illum,output_name]="montage.png"
   [5_qc_illum,log]="5_qc_illum_PLATE"
@@ -267,7 +267,7 @@ run_pipeline() {
   # Add pipeline, data file and output directory
   cmd+=" --pipeline ${PIPELINE_DIR}/${PIPELINE_CONFIG[$pipeline,file]}"
   cmd+=" --data-file ${LOAD_DATA_DIR}/${PIPELINE_CONFIG[$pipeline,data]}"
-  cmd+=" --output-directory $(apply_pattern "${REPRODUCE_DIR}/Source1/Batch1/${PIPELINE_CONFIG[$pipeline,output]}")"
+  cmd+=" --output-directory $(apply_pattern "${REPRODUCE_DIR}/Source1/images/Batch1/${PIPELINE_CONFIG[$pipeline,output]}")"
 
   # Add plugins if needed
   if [[ "$use_plugins" == "true" ]]; then
@@ -298,7 +298,7 @@ run_stitchcrop_pipeline() {
   echo "Processing ALL wells found in ${track_type} directory - each to its own subdirectory"
 
   # Set environment variables for the Python script to read
-  local cmd="STITCH_INPUT_BASE=\"${REPRODUCE_DIR}/Source1/Batch1\" \
+  local cmd="STITCH_INPUT_BASE=\"${REPRODUCE_DIR}/Source1/images/Batch1\" \
 STITCH_TRACK_TYPE=\"${track_type}\" \
 STITCH_AUTORUN=\"true\" \
 /opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/stitch_crop.py"
@@ -316,8 +316,8 @@ run_qc_check() {
   local extra_args=${QC_CONFIG[$qc_key,extra_args]:-""}
 
   # Build input and output paths
-  local input_dir=$(apply_pattern "${REPRODUCE_DIR}/Source1/Batch1/${QC_CONFIG[$qc_key,input]}")
-  local output_dir=$(apply_pattern "${REPRODUCE_DIR}/Source1/Batch1/${QC_CONFIG[$qc_key,output]}")
+  local input_dir=$(apply_pattern "${REPRODUCE_DIR}/Source1/images/Batch1/${QC_CONFIG[$qc_key,input]}")
+  local output_dir=$(apply_pattern "${REPRODUCE_DIR}/Source1/images/Batch1/${QC_CONFIG[$qc_key,output]}")
 
   # Determine output path based on output type
   local output_path

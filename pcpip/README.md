@@ -254,30 +254,47 @@ grep "Saving /app/data/" /tmp/stitch_crop_painting_Plate1_A1.log
 # INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrPhalloidin.tiff, width=592, height=592
 ```
 
-### Utility Scripts
+### Maintainer Notes
+
+#### Utility Scripts
+
+##### 1. CSV Transformation Scripts (Modify Load Data CSVs)
+These scripts update the load_data CSV files to match the pipeline's output folder structure. After running these transformations, sync the updated files back to S3.
 
 ```bash
-# Transform Pipeline 3 CSV for segmentation QC (skip pattern + plate nesting)
+# Set your base directory
 BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+
+# Transform Pipeline 3 CSV for segmentation QC (skip pattern + plate nesting)
 uv run scripts/transform_pipeline3_csv.py ${BASE_DIR}/load_data_pipeline3.csv ${BASE_DIR}/load_data_pipeline3_revised.csv
 
 # Transform Pipeline 7 CSV for plate nesting from pipeline 6
-BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
 uv run scripts/transform_pipeline7_csv.py ${BASE_DIR}/load_data_pipeline7.csv ${BASE_DIR}/load_data_pipeline7_revised.csv
 
-# Transform Pipeline 9 CSV for cropped tiles
-BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
-uv run scripts/transform_pipeline9_csv.py ${BASE_DIR}/load_data_pipeline9.csv ${BASE_DIR}/load_data_pipeline9_cropped.csv
+# Transform Pipeline 9 CSV for cropped tiles with plate-level nesting
+uv run scripts/transform_pipeline9_csv.py ${BASE_DIR}/load_data_pipeline9.csv ${BASE_DIR}/load_data_pipeline9_revised.csv
 
-# Validate files exist for input to Pipeline 9 (check for Well A1)
-# Run this after running Pipelines 1-8
-BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
-duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_cropped.csv') WHERE Metadata_Well = 'A1') TO '/tmp/load_data_pipeline9_cropped_A1.csv' (FORMAT CSV, HEADER);"
-uv run scripts/check_csv_files.py /tmp/load_data_pipeline9_cropped_A1.csv
-# Total: 64, Found: 64, Missing: 0
+# Sync updated CSVs back to S3
+aws s3 sync data/Source1/workspace/load_data_csv/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/Source1/workspace/load_data_csv/ \
+  --exclude "*" \
+  --include "*_revised.csv"
 ```
 
-### Maintainer Notes
+##### 2. Validation Scripts (Check Files and Data)
+These scripts validate that files exist and data is correctly structured. They're read-only and don't modify any files.
+
+```bash
+# Validate files exist for input to Pipeline 9 (check for Well A1)
+# Run this after running Pipelines 1-8 to verify outputs before Pipeline 9
+BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_revised.csv') WHERE Metadata_Well = 'A1') TO '/tmp/load_data_pipeline9_revised_A1.csv' (FORMAT CSV, HEADER);"
+uv run scripts/check_csv_files.py /tmp/load_data_pipeline9_revised_A1.csv
+# Expected output: Total: 64, Found: 64, Missing: 0
+
+# Check any CSV for file existence
+uv run scripts/check_csv_files.py ${BASE_DIR}/load_data_pipeline3_revised.csv
+uv run scripts/check_csv_files.py ${BASE_DIR}/load_data_pipeline7_revised.csv
+```
 
 #### Creating and Uploading Cropped Input Datasets
 
@@ -290,26 +307,23 @@ aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ /tmp/pcpi
   --no-sign-request
 
 # Step 2: Run cropping to create a 25% size version
-mkdir -p /tmp/pcpip-input-cropped
 docker-compose run --rm \
   -e CROP_PERCENT=25 \
-  -v /tmp/pcpip-input:/input:ro \
-  -v /tmp/pcpip-input-cropped:/output \
+  -v /tmp/pcpip-input:/input \
   cellprofiler-shell \
   python /app/scripts/crop_preprocess.py \
-    --input_dir /input/Source1/Batch1/images \
-    --output_dir /output/Source1/Batch1/images
+    --input_dir /input/Source1/Batch1/images
 
 # Step 3: Upload cropped INPUT dataset to S3 (as a new input dataset, not output)
 
 # Set your AWS profile (if needed)
 export AWS_PROFILE=your-profile-name  # Or configure AWS credentials as appropriate
 
-aws s3 sync /tmp/pcpip-input-cropped/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1_sub25/ \
+aws s3 sync /tmp/pcpip-input/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1_sub25/ \
   --size-only
 
 # Step 4: Clean up temp directories
-rm -rf /tmp/pcpip-input /tmp/pcpip-input-cropped
+rm -rf /tmp/pcpip-input
 ```
 
 Users can then switch between full and cropped input datasets by changing the dataset path in their configuration from `fix-s1/` to `fix-s1_sub25/`.

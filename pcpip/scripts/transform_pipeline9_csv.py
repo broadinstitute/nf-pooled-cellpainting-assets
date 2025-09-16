@@ -41,18 +41,26 @@ def main():
                 "images_corrected/", "images_corrected_cropped/"
             )
 
-    # 2. Transform barcoding paths: remove site suffix and add channel subdirectories
+    # 2. Transform barcoding paths: remove site suffix, add plate nesting, and add channel subdirectories
     barcoding_cols = [col for col in df.columns if col.startswith("PathName_Cycle")]
     for col in barcoding_cols:
         # Remove site suffix from paths (e.g., Plate1-A1-0 -> Plate1-A1)
         df[col] = df[col].str.replace(r"/(Plate\d+-[A-Z]\d+)-\d+$", r"/\1", regex=True)
+        # Add plate-level directory nesting (e.g., barcoding/Plate1-A1 -> barcoding/Plate1/Plate1-A1)
+        df[col] = df[col].str.replace(
+            r"/barcoding/(Plate\d+)-", r"/barcoding/\1/\1-", regex=True
+        )
         # Extract channel from column name: PathName_Cycle01_A -> Cycle01_A
         channel = col.replace("PathName_", "")
         df[col] = df[col] + "/" + channel + "/"
 
-    # 3. Add channel subdirectories to painting paths
+    # 3. Add plate nesting and channel subdirectories to painting paths
     painting_cols = [col for col in df.columns if col.startswith("PathName_Corr")]
     for col in painting_cols:
+        # Add plate-level directory nesting (e.g., painting/Plate1-A1 -> painting/Plate1/Plate1-A1)
+        df[col] = df[col].str.replace(
+            r"/painting/(Plate\d+)-", r"/painting/\1/\1-", regex=True
+        )
         # Extract channel from column name: PathName_CorrDNA -> CorrDNA
         channel = col.replace("PathName_", "")
         df[col] = df[col] + channel + "/"

@@ -61,7 +61,7 @@ declare -A PIPELINE_CONFIG=(
   [5,data]="load_data_pipeline5.csv"
   [6,data]="load_data_pipeline6.csv"
   [7,data]="load_data_pipeline7_revised.csv"
-  [9,data]="load_data_pipeline9_cropped.csv"
+  [9,data]="load_data_pipeline9_revised.csv"
 
   # Output directory patterns
   [1,output]="illum/PLATE"
@@ -146,15 +146,14 @@ declare -A STITCH_CONFIG=(
 
 # Define QC check configurations
 declare -A QC_CONFIG=(
-  # QC after Pipeline 1 - Cell Painting Illumination
+  # QC after Pipeline 1 - Cell Painting Illumination (no Cycle in filename)
   [1_qc_illum,script]="montage.py"
   [1_qc_illum,input]="illum/PLATE"
   [1_qc_illum,output]="../workspace/qc_reports/1_illumination_cp/PLATE"
   [1_qc_illum,output_type]="file"  # 'file' or 'dir'
   [1_qc_illum,output_name]="montage.png"  # Name for single file outputs
   [1_qc_illum,log]="1_qc_illum_PLATE"
-  [1_qc_illum,type]="illum_painting"
-  [1_qc_illum,extra_args]=""  # Additional arguments if needed
+  [1_qc_illum,extra_args]="--pattern \"^(?!.*Cycle).*\.npy$\""  # Regex: .npy files NOT containing 'Cycle'
 
   # QC after Pipeline 3 - Segmentation Check
   [3_qc_seg,script]="montage.py"
@@ -163,18 +162,16 @@ declare -A QC_CONFIG=(
   [3_qc_seg,output_type]="file"
   [3_qc_seg,output_name]="montage.png"
   [3_qc_seg,log]="3_qc_seg_PLATE_WELL"
-  [3_qc_seg,type]="generic"
-  [3_qc_seg,extra_args]="--pattern \"*SegmentCheck.png\""
+  [3_qc_seg,extra_args]="--pattern \".*SegmentCheck\.png$\""  # Regex: files ending with SegmentCheck.png
 
-  # QC after Pipeline 5 - Barcoding Illumination
+  # QC after Pipeline 5 - Barcoding Illumination (with Cycle in filename)
   [5_qc_illum,script]="montage.py"
   [5_qc_illum,input]="illum/PLATE"
   [5_qc_illum,output]="../workspace/qc_reports/5_illumination_bc/PLATE"
   [5_qc_illum,output_type]="file"
   [5_qc_illum,output_name]="montage.png"
   [5_qc_illum,log]="5_qc_illum_PLATE"
-  [5_qc_illum,type]="illum_barcoding"
-  [5_qc_illum,extra_args]=""
+  [5_qc_illum,extra_args]="--pattern \".*Cycle.*\.npy$\""  # Regex: .npy files containing 'Cycle'
 
   # QC after Pipeline 4 - Cell Painting Stitching
   # NOTE: Stitching QC visualization removed - needs clearer requirements
@@ -314,7 +311,6 @@ STITCH_AUTORUN=\"true\" \
 run_qc_check() {
   local qc_key=$1
   local script=${QC_CONFIG[$qc_key,script]}
-  local qc_type=${QC_CONFIG[$qc_key,type]}
   local output_type=${QC_CONFIG[$qc_key,output_type]:-"file"}
   local output_name=${QC_CONFIG[$qc_key,output_name]:-"output.png"}
   local extra_args=${QC_CONFIG[$qc_key,extra_args]:-""}
@@ -337,8 +333,8 @@ run_qc_check() {
 
   # Build command - using the executable script directly (it has pixi shebang)
   # Montage.py now extracts identifier from input directory name
-  # Add extra_args at the end if specified
-  local cmd="/app/scripts/${script} \"${input_dir}\" \"${output_path}\" \"${qc_type}\""
+  # New montage.py doesn't need type argument - it auto-detects from patterns
+  local cmd="/app/scripts/${script} \"${input_dir}\" \"${output_path}\""
   if [[ -n "$extra_args" ]]; then
     cmd+=" ${extra_args}"
   fi
@@ -351,7 +347,6 @@ run_qc_check() {
   echo "Running QC check: $qc_key"
   echo "Input: $input_dir"
   echo "Output: $output_path"
-  echo "Type: $qc_type"
   if [[ -n "$extra_args" ]]; then
     echo "Extra args: $extra_args"
   fi

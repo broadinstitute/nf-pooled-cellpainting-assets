@@ -84,9 +84,9 @@ services:
     profiles:
       - interactive
 
-  # Minimal QC service with Pixi
+  # Minimal QC service with numpy and pillow
   qc:
-    image: community.wave.seqera.io/library/python_loguru_matplotlib_numpy_typer:9378cf9abd25cf72
+    image: community.wave.seqera.io/library/numpy_python_pip_pillow:74310e9b76ff61b6
     platform: linux/amd64
     container_name: pcpip-qc
     volumes:
@@ -102,7 +102,7 @@ services:
     tty: true
 
   qc-shell:
-    image: community.wave.seqera.io/library/python_loguru_matplotlib_numpy_typer:9378cf9abd25cf72
+    image: community.wave.seqera.io/library/numpy_python_pip_pillow:74310e9b76ff61b6
     platform: linux/amd64
     container_name: pcpip-qc-shell
     volumes:

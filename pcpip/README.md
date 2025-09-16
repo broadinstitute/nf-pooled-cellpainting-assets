@@ -30,16 +30,23 @@ git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
 # 2. Get test data (~3GB)
 aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
 
-# 3. Run complete workflow with QC
+# 3. (Optional) Crop images for faster processing
+# Overwrites originals - re-download from S3 to restore
+# Options: 25 (fastest), 50 (balanced), 75 (conservative)
+CROP_PERCENT=25 docker-compose run --rm cellprofiler python3 /app/scripts/crop_preprocess.py
+
+# 4. Run complete workflow with QC
+# Note: Stitching steps use CROP_PERCENT to adjust tile dimensions - use the same value as above!
 PIPELINE_STEP=1 docker-compose run --rm cellprofiler
 PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
 PIPELINE_STEP="2,3" docker-compose run --rm cellprofiler
-PIPELINE_STEP=4 docker-compose run --rm fiji
+PIPELINE_STEP=3_qc_seg docker-compose run --rm qc
+CROP_PERCENT=25 PIPELINE_STEP=4 docker-compose run --rm fiji
 
 PIPELINE_STEP=5 docker-compose run --rm cellprofiler
 PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
 PIPELINE_STEP="6,7" docker-compose run --rm cellprofiler
-PIPELINE_STEP=8 docker-compose run --rm fiji
+CROP_PERCENT=25 PIPELINE_STEP=8 docker-compose run --rm fiji
 
 PIPELINE_STEP=9 docker-compose run --rm cellprofiler
 ```
@@ -107,6 +114,9 @@ flowchart TD
     PCP1 -.-> QC1["QC: Illum Montage (Pixi)
     Verify circular & smooth"]
 
+    PCP3 -.-> QC3["QC: Segmentation Montage (Pixi)
+    Verify segmentation quality"]
+
     PCP5 -.-> QC5["QC: Illum Montage (Pixi)
     Verify circular & smooth"]
 
@@ -117,7 +127,7 @@ flowchart TD
 
     class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP7A,PCP8Y,PCP9,PCP6A cellprofiler
     class PCP4,PCP8,PCP8Z fiji
-    class QC1,QC5 qc
+    class QC1,QC3,QC5 qc
 ```
 
 </details>
@@ -134,10 +144,12 @@ pcpip/
 │   ├── run_pcpip.sh                       # Main pipeline orchestration script
 │   ├── stitch_crop.py                     # ImageJ/Fiji stitching and cropping
 │   ├── qc_illum_montage.py                # QC visualization for illumination functions
+│   ├── transform_pipeline3_csv.py         # CSV transformation for segmentation QC (skip pattern + plate nesting)
+│   ├── transform_pipeline7_csv.py         # CSV transformation for plate nesting from pipeline 6
 │   ├── transform_pipeline9_csv.py         # CSV transformation for cropped tiles
 │   └── check_csv_files.py                 # File validation utility
 ├── data/                                  # Unified data directory
-│   └── Source1/Batch1/
+│   └── Source1/images/Batch1/
 │       ├── illum/                         # Illumination correction functions
 │       ├── images_corrected/              # Corrected images
 │       ├── images_aligned/                # Aligned barcoding images
@@ -165,20 +177,20 @@ PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
 
 # Run locally with Pixi (if installed)
 ./scripts/qc_illum_montage.py \
-  data/Source1/Batch1/illum/Plate1 \
-  data/Source1/Batch1/qc_reports/1_illumination_cp/Plate1/montage.png \
+  data/Source1/images/Batch1/illum/Plate1 \
+  data/Source1/images/Batch1/qc_reports/1_illumination_cp/Plate1/montage.png \
   painting Plate1
 
 # Custom channels and cycles
 ./scripts/qc_illum_montage.py \
-  data/Source1/Batch1/illum/Plate1 \
+  data/Source1/images/Batch1/illum/Plate1 \
   output.png barcoding Plate1 \
   --cycles 1-2 --channels DNA,A,C
 
 # Interactive QC shell
 docker-compose run --rm qc-shell
 # Then inside container:
-./qc_illum_montage.py /app/data/Source1/Batch1/illum/Plate1 /app/data/test.png painting Plate1
+./qc_illum_montage.py /app/data/Source1/images/Batch1/illum/Plate1 /app/data/test.png painting Plate1
 ```
 
 #### QC Options
@@ -207,14 +219,14 @@ docker-compose run --rm cellprofiler-shell
 docker-compose run --rm fiji-shell
 
 # Cleanup outputs
-rm -rf data/Source1/Batch1/{illum,images_aligned,images_corrected*}
+rm -rf data/Source1/images/Batch1/{illum,images_aligned,images_corrected*}
 ```
 
 ```bash
 # Test single well stitching and cropping
 
 docker compose run --rm \
-  -e STITCH_INPUT_BASE="/app/data/Source1/Batch1" \
+  -e STITCH_INPUT_BASE="/app/data/Source1/images/Batch1" \
   -e STITCH_TRACK_TYPE="painting" \
   -e STITCH_OUTPUT_TAG="Plate1-A1" \
   -e STITCH_CHANNEL="DNA" \
@@ -222,42 +234,112 @@ docker compose run --rm \
   fiji /opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/stitch_crop.py > /tmp/stitch_crop_painting_Plate1_A1.log 2>&1
 
 grep "Saving /app/data/" /tmp/stitch_crop_painting_Plate1_A1.log
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrCHN2.tiff, width=5920, height=5920
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_1.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_2.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_3.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_4.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrCHN2.tiff, width=592, height=592
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrDNA.tiff, width=5920, height=5920
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_1.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_2.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_3.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_4.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrDNA.tiff, width=592, height=592
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrPhalloidin.tiff, width=5920, height=5920
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_1.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_2.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_3.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_4.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrPhalloidin.tiff, width=592, height=592
-```
-
-### Utility Scripts
-
-```bash
-# Transform Pipeline 9 CSV for cropped tiles
-BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
-uv run scripts/transform_pipeline9_csv.py ${BASE_DIR}/load_data_pipeline9.csv ${BASE_DIR}/load_data_pipeline9_cropped.csv
-
-# Validate files exist for input to Pipeline 9 (check for Well A1)
-# Run this after running Pipelines 1-8
-BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
-duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_cropped.csv') WHERE Metadata_Well = 'A1') TO '/tmp/load_data_pipeline9_cropped_A1.csv' (FORMAT CSV, HEADER);"
-uv run scripts/check_csv_files.py /tmp/load_data_pipeline9_cropped_A1.csv
-# Total: 64, Found: 64, Missing: 0
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrCHN2.tiff, width=5920, height=5920
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_1.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_2.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_3.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_4.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrCHN2.tiff, width=592, height=592
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrDNA.tiff, width=5920, height=5920
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_1.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_2.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_3.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_4.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrDNA.tiff, width=592, height=592
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrPhalloidin.tiff, width=5920, height=5920
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_1.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_2.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_3.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_4.tiff, width=2960, height=2960
+# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrPhalloidin.tiff, width=592, height=592
 ```
 
 ### Maintainer Notes
+
+#### Utility Scripts
+
+##### 1. CSV Transformation Scripts (Modify Load Data CSVs)
+These scripts update the load_data CSV files to match the pipeline's output folder structure. After running these transformations, sync the updated files back to S3.
+
+```bash
+# Set your base directory
+BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+
+# Function to safely run Python transformations in-place
+transform_csv() {
+    local pipeline_num=$1
+    uv run scripts/transform_pipeline${pipeline_num}_csv.py \
+        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.csv \
+        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp
+    mv ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp \
+        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.csv
+}
+
+# Step 1: Apply sed to ALL original CSVs to create _revised versions
+for csv in ${BASE_DIR}/load_data_pipeline*.csv; do
+    if [[ ! "$csv" =~ _revised\.csv$ ]]; then
+        sed 's,Source1/Batch1,Source1/images/Batch1,g' "$csv" > "${csv%.csv}_revised.csv"
+    fi
+done
+
+# Step 2: Run Python transformations in-place on the _revised files
+transform_csv 3
+transform_csv 7
+transform_csv 9
+
+# Sync updated CSVs back to S3
+aws s3 sync data/Source1/workspace/load_data_csv/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/Source1/workspace/load_data_csv/ \
+  --exclude "*" \
+  --include "*_revised.csv"
+```
+
+##### 2. Validation Scripts (Check Files and Data)
+These scripts validate that files exist and data is correctly structured. They're read-only and don't modify any files.
+
+```bash
+# Validate files exist for input to Pipeline 9 (check for Well A1)
+# Run this after running Pipelines 1-8 to verify outputs before Pipeline 9
+BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_revised.csv') WHERE Metadata_Well = 'A1') TO '/tmp/load_data_pipeline9_revised_A1.csv' (FORMAT CSV, HEADER);"
+uv run scripts/check_csv_files.py /tmp/load_data_pipeline9_revised_A1.csv
+# Expected output: Total: 64, Found: 64, Missing: 0
+
+# Check any CSV for file existence
+uv run scripts/check_csv_files.py ${BASE_DIR}/load_data_pipeline3_revised.csv
+uv run scripts/check_csv_files.py ${BASE_DIR}/load_data_pipeline7_revised.csv
+```
+
+#### Creating and Uploading Cropped Input Datasets
+
+To create a pre-cropped input dataset for faster testing:
+
+```bash
+# Step 1: Download original input data to a temp location (NOT the working data/ directory)
+mkdir -p /tmp/pcpip-input
+aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ /tmp/pcpip-input/ \
+  --no-sign-request
+
+# Step 2: Run cropping to create a 25% size version
+docker-compose run --rm \
+  -e CROP_PERCENT=25 \
+  -v /tmp/pcpip-input:/input \
+  cellprofiler-shell \
+  python /app/scripts/crop_preprocess.py \
+    --input_dir /input/Source1/images/Batch1/images
+
+# Step 3: Upload cropped INPUT dataset to S3 (as a new input dataset, not output)
+
+# Set your AWS profile (if needed)
+export AWS_PROFILE=your-profile-name  # Or configure AWS credentials as appropriate
+
+aws s3 sync /tmp/pcpip-input/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1_sub25/ \
+  --size-only
+
+# Step 4: Clean up temp directories
+rm -rf /tmp/pcpip-input
+```
+
+Users can then switch between full and cropped input datasets by changing the dataset path in their configuration from `fix-s1/` to `fix-s1_sub25/`.
 
 #### Uploading Results to S3
 
@@ -293,8 +375,8 @@ To verify local pipeline outputs match the reference outputs on S3:
 ```bash
 # Compare Batch1 outputs (excluding temporary files and CellProfiler CSVs)
 pixi exec --spec rclone -- rclone check \
-  data/Source1/Batch1 \
-  :s3,provider=AWS,region=us-east-1:nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/Source1/Batch1 \
+  data/Source1/images/Batch1 \
+  :s3,provider=AWS,region=us-east-1:nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/Source1/images/Batch1 \
   --skip-links \
   --exclude "*_Image.csv" \
   --exclude "*_Experiment.csv" \

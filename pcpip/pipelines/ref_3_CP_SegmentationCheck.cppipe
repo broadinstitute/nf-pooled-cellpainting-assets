@@ -54,7 +54,7 @@ IdentifyPrimaryObjects:[module_num:2|svn_version:'Unknown'|variable_revision_num
 
 MaskImage:[module_num:3|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
     Select the input image:DNA
-    Name the output image:MaskedDAPI
+    Name the output image:MaskedDNA
     Use objects or an image as a mask?:Objects
     Select object for mask:ConfluentRegions
     Select image for mask:None
@@ -77,7 +77,7 @@ MaskImage:[module_num:5|svn_version:'Unknown'|variable_revision_number:3|show_wi
     Invert the mask?:Yes
 
 IdentifyPrimaryObjects:[module_num:6|svn_version:'Unknown'|variable_revision_number:14|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:MaskedDAPI
+    Select the input image:MaskedDNA
     Name the primary objects to be identified:Nuclei
     Typical diameter of objects, in pixel units (Min,Max):10,80
     Discard objects outside the diameter range?:Yes
@@ -176,7 +176,7 @@ IdentifySecondaryObjects:[module_num:8|svn_version:'Unknown'|variable_revision_n
 
 RescaleIntensity:[module_num:9|svn_version:'Unknown'|variable_revision_number:3|show_window:False|notes:[]|batch_state:array([], dtype=uint8)|enabled:True|wants_pause:True]
     Select the input image:DNA
-    Name the output image:RescaleDAPIPaintingForVis
+    Name the output image:RescaleDNAPaintingForVis
     Rescaling method:Stretch each image to use the full intensity range
     Method to calculate the minimum intensity:Custom
     Method to calculate the maximum intensity:Custom
@@ -221,7 +221,7 @@ GrayToColor:[module_num:12|svn_version:'Unknown'|variable_revision_number:4|show
     Rescale intensity:No
     Select the image to be colored red:RescaleCHN2forvis
     Select the image to be colored green:RescalePhalloidinForVis
-    Select the image to be colored blue:RescaleDAPIPaintingForVis
+    Select the image to be colored blue:RescaleDNAPaintingForVis
     Name the output image:ColorImage
     Relative weight for the red image:1.0
     Relative weight for the green image:1

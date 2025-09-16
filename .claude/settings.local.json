@@ -31,7 +31,14 @@
       "Bash(./qc_illum_montage.py)",
       "Read(/Users/shsingh/Documents/GitHub/nf/starrynight/docs/developer/legacy/**)",
       "Bash(./qc_stitch_visual.py ../data/Source1/Batch1/images_corrected_stitched_10X/painting/Plate1-A1 test_output.png painting Plate1 --well A1 -v)",
-      "Bash(./qc_stitch_visual.py:*)"
+      "Bash(./qc_stitch_visual.py:*)",
+      "Bash(PIPELINE_STEP=5 docker-compose run --rm cellprofiler)",
+      "Bash(PIPELINE_STEP=1 docker-compose run --rm cellprofiler)",
+      "Bash(PIPELINE_STEP=1_qc_illum docker-compose run --rm qc)",
+      "Bash(./scripts/montage.py data/Source1/Batch1/illum/Plate1 test_illum_painting_new.png painting Plate1)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(./scripts/montage.py:*)"
     ],
     "deny": [],
     "ask": [],

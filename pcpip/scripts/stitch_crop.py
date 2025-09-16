@@ -1,6 +1,15 @@
 # ruff: noqa: ANN002,ANN003,ANN202,ANN204,ANN401,D100,D104,D202,D400,D413,D415,E501,F401,F541,F821,F841,I001,N803,N806,N816,PTH102,PTH104,PTH110,PTH112,PTH113,PTH114,PTH115,PTH118,PTH123,UP015,UP024,UP031,UP035,W605,E722
 """Script for stitching and cropping microscopy images using ImageJ/Fiji.
 
+IMPORTANT: This script runs in Jython 2.7 (Python 2-like) environment within Fiji/ImageJ.
+Many Python 3+ features are NOT available:
+- No f-strings (use .format() instead)
+- No FileNotFoundError (use OSError/IOError instead)
+- No pathlib (use os.path instead)
+- No type hints
+- Limited standard library support
+Keep all code compatible with Python 2.7/Jython when making changes.
+
 This script:
 1. Takes multi-site microscopy images from each well
 2. Stitches them together into a full well image
@@ -89,14 +98,47 @@ localtemp = "/tmp/FIJI_temp"  # Temporary directory
 # Grid stitching parameters
 rows = "2"  # Number of rows in the site grid
 columns = "2"  # Number of columns in the site grid
-size = "1480"  # Base size of input images (pixels)
+
+# Dynamically set size based on crop percentage (default to 25% crop)
+# Original images are 1600x1600, after crop:
+# - 25% crop (CROP_PERCENT=25): 400x400
+# - 50% crop (CROP_PERCENT=50): 800x800
+# - No crop: ~1480x1480 (with some built-in crop)
+crop_percent_str = os.getenv("CROP_PERCENT", "25")
+if not crop_percent_str:  # Handle empty string case
+    crop_percent_str = "25"
+crop_percent = int(crop_percent_str)
+if crop_percent == 25:
+    size = "400"
+    final_tile_size = "800"
+    logger.info(
+        "=== CROP_PERCENT=25 detected: Using 400x400 input images, 800x800 output tiles ==="
+    )
+elif crop_percent == 50:
+    size = "800"
+    final_tile_size = "1600"
+    logger.info(
+        "=== CROP_PERCENT=50 detected: Using 800x800 input images, 1600x1600 output tiles ==="
+    )
+else:
+    # Default/no crop
+    size = "1480"
+    final_tile_size = "2960"
+    logger.info(
+        "=== No crop/default: Using 1480x1480 input images, 2960x2960 output tiles ==="
+    )
+
+logger.info(
+    "Configuration: Input size={}x{}, Final tile size={}x{}".format(
+        size, size, final_tile_size, final_tile_size
+    )
+)
 overlap_pct = "10"  # Percentage overlap between adjacent images
 
 # Tiling parameters
 tileperside = "2"  # Number of tiles to create per side when cropping
 scalingstring = "1.99"  # Scaling factor to apply to images
 round_or_square = "square"  # Shape of the well (square or round)
-final_tile_size = "2960"  # Final tile size after scaling (pixels)
 xoffset_tiles = "0"  # X offset for tile cropping
 yoffset_tiles = "0"  # Y offset for tile cropping
 compress = "True"  # Whether to compress output TIFF files
@@ -225,28 +267,30 @@ logger.info("Input subdirectory: {}".format(subdir))
 
 # Check what's in the input directory
 logger.info("Checking if directory exists: {}".format(subdir))
-a = os.listdir(subdir)
-logger.info("Contents of {}: {}".format(subdir, a))
 
-# Flatten any nested directories - create symlinks from subdirectories to main directory
-for x in a:
-    if os.path.isdir(os.path.join(subdir, x)):
-        logger.info("Processing subdirectory: {}".format(x))
-        b = os.listdir(os.path.join(subdir, x))
-        for c in b:
-            # Skip CSV files
-            if c.lower().endswith(".csv"):
-                logger.info("Skipping CSV file: {}".format(c))
-                continue
+# Use os.walk to recursively find all TIFF files at any depth
+logger.info("Recursively searching for TIFF files to flatten directory structure")
+tiff_count = 0
+for root, dirs, files in os.walk(subdir):
+    # Skip the root directory itself
+    if root == subdir:
+        continue
 
-            src = os.path.join(subdir, x, c)
-            dst = os.path.join(subdir, c)
-            logger.info("Creating symlink: {} -> {}".format(src, dst))
+    for filename in files:
+        # Process only TIFF files, skip CSVs and others
+        if filename.lower().endswith((".tif", ".tiff")):
+            src = os.path.join(root, filename)
+            dst = os.path.join(subdir, filename)
+
             # Check if destination exists
             if os.path.exists(dst) or os.path.islink(dst):
                 logger.info("Destination already exists, skipping: {}".format(dst))
             else:
+                logger.info("Creating symlink: {} -> {}".format(src, dst))
                 os.symlink(src, dst)
+                tiff_count += 1
+
+logger.info("Created {} symlinks to TIFF files".format(tiff_count))
 
 # Confirm completion of directory setup
 if not confirm_continue("Directory setup complete. Proceed to analyze files?"):
@@ -396,14 +440,30 @@ if os.path.isdir(subdir):
             # Get the plate ID for this well
             plate_id = well_to_plate.get(eachwell, "UnknownPlate")
 
-            # Create well-specific output directories
+            # Create well-specific output directories with PLATE nesting
             # Use Plate-Well format (e.g., Plate1-A1) for directory names
             well_dir_name = "{}-{}".format(plate_id, eachwell)  # e.g., "Plate1-A1"
-            well_out_subdir = os.path.join(outfolder, well_dir_name)
-            well_tile_subdir = os.path.join(tile_outdir, well_dir_name)
-            well_downsample_subdir = os.path.join(downsample_outdir, well_dir_name)
 
-            # Create directories if they don't exist
+            # Add PLATE nesting for all output directories (e.g., Plate1/Plate1-A1)
+            plate_out_subdir = os.path.join(outfolder, plate_id)
+            plate_tile_subdir = os.path.join(tile_outdir, plate_id)
+            plate_downsample_subdir = os.path.join(downsample_outdir, plate_id)
+
+            well_out_subdir = os.path.join(plate_out_subdir, well_dir_name)
+            well_tile_subdir = os.path.join(plate_tile_subdir, well_dir_name)
+            well_downsample_subdir = os.path.join(
+                plate_downsample_subdir, well_dir_name
+            )
+
+            # Create plate directories first
+            if not os.path.exists(plate_out_subdir):
+                os.mkdir(plate_out_subdir)
+            if not os.path.exists(plate_tile_subdir):
+                os.mkdir(plate_tile_subdir)
+            if not os.path.exists(plate_downsample_subdir):
+                os.mkdir(plate_downsample_subdir)
+
+            # Then create well directories
             if not os.path.exists(well_out_subdir):
                 os.mkdir(well_out_subdir)
             if not os.path.exists(well_tile_subdir):
@@ -477,6 +537,14 @@ if os.path.isdir(subdir):
                 )
                 # Get the resulting stitched image
                 im = IJ.getImage()
+
+                # Log the actual stitched image dimensions to verify correct size
+                expected_size = int(rows) * int(size)
+                logger.info(
+                    "=== Actual stitched dimensions: {}x{} (expected ~{}x{}) ===".format(
+                        im.width, im.height, expected_size, expected_size
+                    )
+                )
 
                 # Calculate dimensions for scaling
                 width = str(int(round(im.width * float(scalingstring))))
@@ -645,7 +713,7 @@ for eachlogfile in ["TileConfiguration.txt"]:
             os.path.join(outfolder, eachlogfile),
         )
         logger.info("Moved {} to output directory".format(eachlogfile))
-    except FileNotFoundError:
+    except (OSError, IOError):  # Python 2/Jython compatibility
         logger.warning("Could not find TileConfiguration.txt in {}".format(subdir))
         # Create an empty file if it doesn't exist (for testing purposes)
         if not os.path.exists(os.path.join(outfolder, eachlogfile)):

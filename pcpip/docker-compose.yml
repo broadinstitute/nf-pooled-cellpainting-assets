@@ -16,6 +16,7 @@ services:
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
       - PIPELINE_STEP=${PIPELINE_STEP}
+      - CROP_PERCENT=${CROP_PERCENT}
       - JAVA_OPTS=-Xmx2G
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
@@ -38,6 +39,7 @@ services:
       - DISPLAY=
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
+      - CROP_PERCENT=${CROP_PERCENT}
     stdin_open: true
     tty: true
     profiles:
@@ -58,6 +60,7 @@ services:
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
       - PIPELINE_STEP=${PIPELINE_STEP}
+      - CROP_PERCENT=${CROP_PERCENT}
     stdin_open: true
     tty: true
 
@@ -75,14 +78,15 @@ services:
       - DISPLAY=
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
+      - CROP_PERCENT=${CROP_PERCENT}
     stdin_open: true
     tty: true
     profiles:
       - interactive
 
-  # Minimal QC service with Pixi
+  # Minimal QC service with numpy and pillow
   qc:
-    image: ghcr.io/prefix-dev/pixi:latest
+    image: community.wave.seqera.io/library/numpy_python_pip_pillow:74310e9b76ff61b6
     platform: linux/amd64
     container_name: pcpip-qc
     volumes:
@@ -98,7 +102,7 @@ services:
     tty: true
 
   qc-shell:
-    image: ghcr.io/prefix-dev/pixi:latest
+    image: community.wave.seqera.io/library/numpy_python_pip_pillow:74310e9b76ff61b6
     platform: linux/amd64
     container_name: pcpip-qc-shell
     volumes:

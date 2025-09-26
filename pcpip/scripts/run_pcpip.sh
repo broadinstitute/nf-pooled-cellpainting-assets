@@ -36,7 +36,7 @@ mkdir -p ${LOG_DIR}
 
 PLATE=Plate1
 # WELLS=("A1" "A2" "B1")
-WELLS=("A1") # This can be an arbitrary subset of wells of Wthe load data csv files
+WELLS=("A1") # MUST match the wells filtered in LoadData CSVs (see filter_loaddata_csvs_inplace.py)
 SITES=(0 1 2 3) # This has to be consistent with load data csv files and the settings in stitch_crop.py (rows x columns)
 CYCLES=(1 2 3) # This has to be consistent with the barcoding pipeline
 
@@ -54,14 +54,14 @@ declare -A PIPELINE_CONFIG=(
   [7,file]="ref_7_BC_Preprocess.cppipe"
   [9,file]="ref_9_Analysis.cppipe"
 
-  # Data files
-  [1,data]="load_data_pipeline1_revised.csv"
-  [2,data]="load_data_pipeline2_revised.csv"
-  [3,data]="load_data_pipeline3_revised.csv"
-  [5,data]="load_data_pipeline5_revised.csv"
-  [6,data]="load_data_pipeline6_revised.csv"
-  [7,data]="load_data_pipeline7_revised.csv"
-  [9,data]="load_data_pipeline9_revised.csv"
+  # Data files - use generated CSVs
+  [1,data]="load_data_pipeline1_generated.csv"
+  [2,data]="load_data_pipeline2_generated.csv"
+  [3,data]="load_data_pipeline3_generated.csv"
+  [5,data]="load_data_pipeline5_generated.csv"
+  [6,data]="load_data_pipeline6_generated.csv"
+  [7,data]="load_data_pipeline7_generated.csv"
+  [9,data]="load_data_pipeline9_generated.csv"
 
   # Output directory patterns
   [1,output]="illum/PLATE"

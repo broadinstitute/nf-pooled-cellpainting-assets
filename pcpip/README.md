@@ -5,6 +5,7 @@ Containerized PCPIP (Pooled Cell Painting Image Processing) pipeline demo using 
 ## Pipeline Architecture
 
 This pipeline uses three specialized Docker containers:
+
 - **cellprofiler**: Runs CellProfiler pipelines (1-3, 5-7, 9)
 - **fiji**: Runs ImageJ/Fiji stitching (4, 8)
 - **qc**: Runs QC visualizations with Pixi (1_qc_illum, 5_qc_illum)
@@ -14,6 +15,7 @@ Each container is called with `PIPELINE_STEP` to specify what to run.
 ## Quick Start
 
 ### Prerequisites
+
 - Docker Desktop with **16GB memory** for Pipeline 9 (Settings → Resources → Advanced)
 - Git installed
 - Optional: [Pixi](https://pixi.sh) for running QC scripts locally
@@ -27,15 +29,27 @@ cd pcpip/
 # 1. Clone plugins
 git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
 
-# 2. Get test data (~3GB)
+# 2. Get test data (~3GB) including samplesheet
 aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
 
-# 3. (Optional) Crop images for faster processing
+# 3. Filter LoadData CSVs to match the wells you want to process
+# IMPORTANT: This ensures illumination pipelines (1,5) only use your subset of data
+# Options: --wells "A1" for single well, or --wells "A1,A2,B1" for multiple wells
+uv run scripts/filter_loaddata_csvs_inplace.py --wells "A1"
+
+# 4. Generate LoadData CSVs from samplesheet
+# Creates load_data_pipeline{1-9}_generated.csv files
+# Validates against filtered reference (_revised.csv) files to ensure correctness
+# NOTE: Your samplesheet must already contain only the wells you filtered above (e.g., only A1)
+# If your samplesheet has different wells, create a filtered version first
+uv run scripts/loaddata_generator.py data/Source1/workspace/samplesheets/samplesheet1.csv --validate
+
+# 5. (Optional) Crop images for faster processing
 # Overwrites originals - re-download from S3 to restore
 # Options: 25 (fastest), 50 (balanced), 75 (conservative)
 CROP_PERCENT=25 docker-compose run --rm cellprofiler python3 /app/scripts/crop_preprocess.py
 
-# 4. Run complete workflow with QC
+# 6. Run complete workflow with QC
 # Note: Stitching steps use CROP_PERCENT to adjust tile dimensions - use the same value as above!
 PIPELINE_STEP=1 docker-compose run --rm cellprofiler
 PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
@@ -53,7 +67,6 @@ PIPELINE_STEP=9 docker-compose run --rm cellprofiler
 
 <details>
 <summary>Pipeline Details</summary>
-
 
 ```mermaid
 flowchart TD
@@ -159,7 +172,6 @@ pcpip/
 └── docker-compose.yml                     # Container configuration
 ```
 
-
 ### Quality Control (QC)
 
 The pipeline includes automatic QC checks after key processing steps. These checks help verify that illumination correction functions appear "vaguely circular and vaguely smooth" as expected.
@@ -259,6 +271,7 @@ grep "Saving /app/data/" /tmp/stitch_crop_painting_Plate1_A1.log
 #### Utility Scripts
 
 ##### 1. CSV Transformation Scripts (Modify Load Data CSVs)
+
 These scripts update the load_data CSV files to match the pipeline's output folder structure. After running these transformations, sync the updated files back to S3.
 
 ```bash
@@ -294,6 +307,7 @@ aws s3 sync data/Source1/workspace/load_data_csv/ s3://nf-pooled-cellpainting-sa
 ```
 
 ##### 2. Validation Scripts (Check Files and Data)
+
 These scripts validate that files exist and data is correctly structured. They're read-only and don't modify any files.
 
 ```bash
@@ -395,6 +409,7 @@ pixi exec --spec rclone -- rclone check \
 ```
 
 **Note**:
+
 - Uses rclone's on-the-fly S3 config (`:s3,provider=AWS,region=us-east-1:`) for public bucket access
 - Excludes CellProfiler experiment CSVs which contain timestamps/metadata that vary between runs
 - The `--skip-links` flag ignores symbolic links

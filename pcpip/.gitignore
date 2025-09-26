@@ -1,5 +1,7 @@
 # Ignore data directories to avoid committing large datasets
 data/*
+data_generated/*
+data_revised/*
 
 # Ignore plugins directory (cloned separately)
 plugins/

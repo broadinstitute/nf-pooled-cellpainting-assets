@@ -238,6 +238,8 @@ def pipeline6(samplesheet_df):
                 data[f"FileName_Cycle{cycle:02d}_Illum{mapped}"] = (
                     f"{plate}_Cycle{cycle}_Illum{mapped}.npy"
                 )
+                # Add Frame column for illumination (even though .npy files don't have frames)
+                data[f"Frame_Cycle{cycle:02d}_Illum{mapped}"] = 0
 
         rows.append(data)
 
@@ -386,15 +388,122 @@ CHANNEL_MAP = {
 }
 
 
+def normalize_paths_in_df(df):
+    """Normalize all paths by removing trailing slashes."""
+    for col in df.columns:
+        if "PathName" in col and col in df.columns:
+            # Remove trailing slashes from paths
+            df[col] = df[col].str.rstrip("/")
+    return df
+
+
+def compare_csvs(ref_file, gen_df):
+    """Compare generated CSV against reference CSV with strict equivalence checking."""
+    try:
+        ref_df = pd.read_csv(ref_file)
+
+        # Normalize paths
+        ref_df = normalize_paths_in_df(ref_df)
+        gen_df = normalize_paths_in_df(gen_df)
+
+        # Check for exact same shape (no filtering, must be identical row count)
+        if ref_df.shape != gen_df.shape:
+            return (
+                False,
+                f"✗ DIFFER - Shape mismatch: ref={ref_df.shape}, gen={gen_df.shape}",
+            )
+
+        # Check for exact same columns
+        ref_cols = set(ref_df.columns)
+        gen_cols = set(gen_df.columns)
+        if ref_cols != gen_cols:
+            missing = ref_cols - gen_cols
+            extra = gen_cols - ref_cols
+            msg = "✗ DIFFER - Column mismatch"
+            if missing:
+                msg += f", missing: {missing}"
+            if extra:
+                msg += f", extra: {extra}"
+            return False, msg
+
+        # Sort columns and rows for comparison (allow different ordering)
+        ref_df = (
+            ref_df.sort_index(axis=1)
+            .sort_values(by=list(ref_df.columns))
+            .reset_index(drop=True)
+        )
+        gen_df = (
+            gen_df.sort_index(axis=1)
+            .sort_values(by=list(gen_df.columns))
+            .reset_index(drop=True)
+        )
+
+        # Compare with strict equality
+        pd.testing.assert_frame_equal(ref_df, gen_df, check_like=True)
+        return True, "✓ MATCH (exact equivalence)"
+    except AssertionError as e:
+        error_msg = str(e)
+        return False, f"✗ DIFFER - {error_msg[:150]}..."
+    except FileNotFoundError:
+        return False, "✗ Reference file not found"
+
+
+def validate_all(
+    csvs, ref_base_path="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+):
+    """Validate all generated CSVs against reference files."""
+    results = {}
+    for pipeline_num, gen_df in csvs.items():
+        ref_file = f"{ref_base_path}/load_data_pipeline{pipeline_num}_revised.csv"
+        success, message = compare_csvs(ref_file, gen_df.copy())
+        results[pipeline_num] = (success, message)
+        print(f"Pipeline {pipeline_num}: {message}")
+
+    return results
+
+
 if __name__ == "__main__":
-    import sys
+    import argparse
 
-    if len(sys.argv) != 2:
-        print("Usage: python loaddata_generator.py samplesheet.csv")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Generate LoadData CSVs for PCPIP CellProfiler pipelines"
+    )
+    parser.add_argument("samplesheet", help="Path to samplesheet CSV")
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Compare generated CSVs against reference files",
+    )
+    parser.add_argument(
+        "--ref-path",
+        default="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed",
+        help="Path to reference CSV files for validation",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed",
+        help="Directory to save generated CSV files",
+    )
 
-    csvs = generate_all(sys.argv[1])
+    args = parser.parse_args()
+
+    # Generate CSVs
+    csvs = generate_all(args.samplesheet)
+
+    # Save to files
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     for num, df in csvs.items():
-        output = f"load_data_pipeline{num}.csv"
+        output = output_dir / f"load_data_pipeline{num}_generated.csv"
         df.to_csv(output, index=False)
         print(f"Generated {output} with {len(df)} rows")
+
+    # Validate if requested
+    if args.validate:
+        print("\n=== Validation Results ===")
+        results = validate_all(csvs, args.ref_path)
+
+        # Summary
+        successes = sum(1 for success, _ in results.values() if success)
+        print(f"\nSummary: {successes}/{len(results)} pipelines match reference")

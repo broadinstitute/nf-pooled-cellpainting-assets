@@ -31,17 +31,18 @@ Usage:
 import pandas as pd
 from pathlib import Path
 
-# Base path used in load_data CSVs
-BASE_PATH = "/app/data/Source1/images/Batch1"
+# Default base path used in load_data CSVs (can be overridden via CLI)
+DEFAULT_BASE_PATH = "/app/data/Source1/images/Batch1"
 
 
-def pipeline1(samplesheet_df):
+def pipeline1(samplesheet_df, base_path=None):
     """
     Pipeline 1: Cell Painting Illumination Calculation
     Input: Raw painting images
     Output: {Plate}_Illum{Channel}.npy
     Groups by: plate
     """
+    base_path = base_path or DEFAULT_BASE_PATH
     df = samplesheet_df[samplesheet_df.arm == "painting"]
     rows = []
 
@@ -53,7 +54,7 @@ def pipeline1(samplesheet_df):
         # We need the acquisition folder name (parent of the image file)
         acq_folder = Path(row["path"]).parent.name
         plate_dir = (
-            f"{BASE_PATH}/images/{row['plate']}/{acq_folder}/"  # Add trailing slash
+            f"{base_path}/images/{row['plate']}/{acq_folder}/"  # Add trailing slash
         )
 
         data = {
@@ -73,13 +74,14 @@ def pipeline1(samplesheet_df):
     return pd.DataFrame(rows)
 
 
-def pipeline2(samplesheet_df):
+def pipeline2(samplesheet_df, base_path=None):
     """
     Pipeline 2: Cell Painting Apply Illumination
     Input: Raw images + illumination functions
     Output: Plate_{Plate}_Well_{Well}_Site_{Site}_Corr{Channel}.tiff
     Groups by: plate, well
     """
+    base_path = base_path or DEFAULT_BASE_PATH
     df = samplesheet_df[samplesheet_df.arm == "painting"]
     rows = []
 
@@ -88,9 +90,9 @@ def pipeline2(samplesheet_df):
         filename = Path(row["path"]).name
         acq_folder = Path(row["path"]).parent.name
         plate_dir = (
-            f"{BASE_PATH}/images/{row['plate']}/{acq_folder}/"  # Add trailing slash
+            f"{base_path}/images/{row['plate']}/{acq_folder}/"  # Add trailing slash
         )
-        illum_dir = f"{BASE_PATH}/illum/{row['plate']}"  # No trailing slash for illum
+        illum_dir = f"{base_path}/illum/{row['plate']}"  # No trailing slash for illum
 
         data = {
             "Metadata_Plate": row["plate"],
@@ -111,21 +113,23 @@ def pipeline2(samplesheet_df):
     return pd.DataFrame(rows)
 
 
-def pipeline3(samplesheet_df):
+def pipeline3(samplesheet_df, base_path=None, qc_sites=None):
     """
     Pipeline 3: Cell Painting Segmentation Check
     Input: Corrected images from Pipeline 2
     Output: QC metrics (no new images)
     """
+    base_path = base_path or DEFAULT_BASE_PATH
     df = samplesheet_df[samplesheet_df.arm == "painting"]
     rows = []
 
-    # Sample subset for QC (e.g., sites 0 and 2)
-    qc_sites = [0, 2]
+    # Sample subset for QC
+    if qc_sites is None:
+        qc_sites = [0, 2]
 
     for _, row in df[df.site.isin(qc_sites)].iterrows():
         channels = row["channels"].split(",")
-        output_dir = f"{BASE_PATH}/images_corrected/painting/{row['plate']}/{row['plate']}-{row['well']}-{row['site']}/"  # Add trailing slash
+        output_dir = f"{base_path}/images_corrected/painting/{row['plate']}/{row['plate']}-{row['well']}-{row['site']}/"  # Add trailing slash
 
         data = {
             "Metadata_Plate": row["plate"],
@@ -158,20 +162,25 @@ def pipeline4(samplesheet_df):
     pass
 
 
-def pipeline5(samplesheet_df):
+def pipeline5(samplesheet_df, base_path=None):
     """
     Pipeline 5: Barcoding Illumination Calculation
     Input: Raw barcoding images
     Output: {Plate}_Cycle{N}_Illum{Channel}.npy
     Groups by: plate, cycle
     """
+    base_path = base_path or DEFAULT_BASE_PATH
     df = samplesheet_df[samplesheet_df.arm == "barcoding"]
     rows = []
 
     for _, row in df.iterrows():
         channels = row["channels"].split(",")
         filename = Path(row["path"]).name
-        cycle_dir = f"{BASE_PATH}/images/{row['plate']}/20X_c{row['cycle']}_SBS-{row['cycle']}/"  # Add trailing slash
+        # Extract actual acquisition folder from path instead of hardcoding
+        acq_folder = Path(row["path"]).parent.name
+        cycle_dir = (
+            f"{base_path}/images/{row['plate']}/{acq_folder}/"  # Add trailing slash
+        )
 
         data = {
             "Metadata_Plate": row["plate"],
@@ -191,13 +200,14 @@ def pipeline5(samplesheet_df):
     return pd.DataFrame(rows)
 
 
-def pipeline6(samplesheet_df):
+def pipeline6(samplesheet_df, base_path=None):
     """
     Pipeline 6: Barcoding Apply Illumination + Alignment
 
     Complex cycle-based format where columns are Cycle{NN}_{Channel}_{Orig|Illum}.
     Groups across cycles to align multi-cycle barcoding sequences.
     """
+    base_path = base_path or DEFAULT_BASE_PATH
     df = samplesheet_df[samplesheet_df.arm == "barcoding"]
     rows = []
 
@@ -215,8 +225,12 @@ def pipeline6(samplesheet_df):
         # Build paths for each cycle
         for cycle in sorted(group["cycle"].unique()):
             cycle_row = group[group["cycle"] == cycle].iloc[0]
-            cycle_dir = f"{BASE_PATH}/images/{plate}/20X_c{cycle}_SBS-{cycle}/"  # Add trailing slash
-            illum_dir = f"{BASE_PATH}/illum/{plate}"  # No trailing slash for illum
+            # Extract actual acquisition folder from path instead of hardcoding
+            acq_folder = Path(cycle_row["path"]).parent.name
+            cycle_dir = (
+                f"{base_path}/images/{plate}/{acq_folder}/"  # Add trailing slash
+            )
+            illum_dir = f"{base_path}/illum/{plate}"  # No trailing slash for illum
 
             for ch in channels:
                 # Use different naming convention for pipeline 6
@@ -240,19 +254,20 @@ def pipeline6(samplesheet_df):
     return pd.DataFrame(rows)
 
 
-def pipeline7(samplesheet_df):
+def pipeline7(samplesheet_df, base_path=None):
     """
     Pipeline 7: Barcode Preprocessing
     Input: Aligned images from Pipeline 6
     Output: Preprocessed images for barcode calling
     """
+    base_path = base_path or DEFAULT_BASE_PATH
     df = samplesheet_df[samplesheet_df.arm == "barcoding"]
     rows = []
 
     for (well, site), group in df.groupby(["well", "site"]):
         plate = group.iloc[0]["plate"]
         channels = group.iloc[0]["channels"].split(",")
-        output_dir = f"{BASE_PATH}/images_aligned/barcoding/{plate}/{plate}-{well}-{site}/"  # Add trailing slash
+        output_dir = f"{base_path}/images_aligned/barcoding/{plate}/{plate}-{well}-{site}/"  # Add trailing slash
 
         data = {
             "Metadata_Plate": plate,
@@ -295,18 +310,20 @@ def pipeline8(samplesheet_df):
     pass
 
 
-def pipeline9(samplesheet_df):
+def pipeline9(samplesheet_df, base_path=None, tiles_per_well=None):
     """
     Pipeline 9: Combined Analysis
     Input: Cropped tiles from Pipelines 4 & 8
     Output: Final measurements
     Groups by: well, tile
     """
+    base_path = base_path or DEFAULT_BASE_PATH
     df = samplesheet_df[samplesheet_df.arm == "barcoding"]
     rows = []
 
     # Tiles created by stitching - predict based on grid
-    tiles_per_well = 4  # 2x2 grid for this dataset
+    if tiles_per_well is None:
+        tiles_per_well = 4  # 2x2 grid for this dataset
 
     for well in df["well"].unique():
         plate = df.iloc[0]["plate"]
@@ -325,7 +342,7 @@ def pipeline9(samplesheet_df):
             for cycle in [1, 2, 3]:
                 for ch in channels_bc:
                     col = f"Cycle{cycle:02d}_{ch}"
-                    path = f"{BASE_PATH}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/{col}/"  # Add trailing slash
+                    path = f"{base_path}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/{col}/"  # Add trailing slash
                     data[f"PathName_{col}"] = path
                     data[f"FileName_{col}"] = (
                         f"{col}_Site_{tile}.tiff"  # Use Site naming
@@ -333,7 +350,7 @@ def pipeline9(samplesheet_df):
 
             # Add Cycle01_DNA separately (special case for pipeline 9)
             data["PathName_Cycle01_DNA"] = (
-                f"{BASE_PATH}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/Cycle01_DNA/"
+                f"{base_path}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/Cycle01_DNA/"
             )
             data["FileName_Cycle01_DNA"] = (
                 f"Cycle01_DNA_Site_{tile}.tiff"  # Use Site naming
@@ -341,7 +358,7 @@ def pipeline9(samplesheet_df):
 
             # Cell Painting channels (with Corr prefix)
             for ch in channels_cp:
-                path = f"{BASE_PATH}/images_corrected_cropped/painting/{plate}/{plate}-{well}/Corr{ch}/"  # Add Corr to path too!
+                path = f"{base_path}/images_corrected_cropped/painting/{plate}/{plate}-{well}/Corr{ch}/"  # Add Corr to path too!
                 data[f"PathName_Corr{ch}"] = path
                 data[f"FileName_Corr{ch}"] = (
                     f"Corr{ch}_Site_{tile}.tiff"  # Use Site naming
@@ -352,20 +369,20 @@ def pipeline9(samplesheet_df):
     return pd.DataFrame(rows)
 
 
-def generate_all(samplesheet_path):
-    """Generate LoadData CSVs for all pipelines"""
+def generate_all(samplesheet_path, base_path=None, qc_sites=None, tiles_per_well=None):
+    """Generate LoadData CSVs for all pipelines with configurable parameters"""
     df = pd.read_csv(samplesheet_path)
 
     return {
-        1: pipeline1(df),
-        2: pipeline2(df),
-        3: pipeline3(df),
+        1: pipeline1(df, base_path),
+        2: pipeline2(df, base_path),
+        3: pipeline3(df, base_path, qc_sites),
         # 4 is FIJI stitching - no CSV
-        5: pipeline5(df),
-        6: pipeline6(df),
-        7: pipeline7(df),
+        5: pipeline5(df, base_path),
+        6: pipeline6(df, base_path),
+        7: pipeline7(df, base_path),
         # 8 is FIJI stitching - no CSV
-        9: pipeline9(df),
+        9: pipeline9(df, base_path, tiles_per_well),
     }
 
 
@@ -465,11 +482,37 @@ if __name__ == "__main__":
         default="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed",
         help="Directory to save generated CSV files",
     )
+    parser.add_argument(
+        "--base-path",
+        default=None,
+        help=f"Base path for LoadData CSVs (default: {DEFAULT_BASE_PATH})",
+    )
+    parser.add_argument(
+        "--qc-sites",
+        default=None,
+        help="Comma-separated list of site indices for QC (default: 0,2)",
+    )
+    parser.add_argument(
+        "--tiles-per-well",
+        type=int,
+        default=None,
+        help="Number of tiles per well for pipeline 9 (default: 4)",
+    )
 
     args = parser.parse_args()
 
-    # Generate CSVs
-    csvs = generate_all(args.samplesheet)
+    # Parse QC sites if provided
+    qc_sites = None
+    if args.qc_sites:
+        qc_sites = [int(s.strip()) for s in args.qc_sites.split(",")]
+
+    # Generate CSVs with configurable parameters
+    csvs = generate_all(
+        args.samplesheet,
+        base_path=args.base_path,
+        qc_sites=qc_sites,
+        tiles_per_well=args.tiles_per_well,
+    )
 
     # Save to files
     output_dir = Path(args.output_dir)

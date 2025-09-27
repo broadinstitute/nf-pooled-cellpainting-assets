@@ -1,0 +1,293 @@
+{
+  "metadata": {
+    "description": "PCPIP LoadData Generation Specification",
+    "version": "3.0",
+    "base_path": "/app/data/Source1/images/Batch1"
+  },
+
+  "channel_definitions": {
+    "painting": ["DNA", "CHN2", "Phalloidin"],
+    "barcoding": ["C", "A", "T", "G", "DNA"]
+  },
+
+  "pipelines": {
+    "1": {
+      "name": "Cell Painting Illumination",
+      "filter": "arm == 'painting'",
+      "grouping": ["plate"],
+      "columns": {
+        "metadata": [
+          {"name": "Metadata_Plate", "source": "plate"},
+          {"name": "Metadata_Site", "source": "site"},
+          {"name": "Metadata_Well", "source": "well"}
+        ],
+        "per_channel": {
+          "channels": "painting",
+          "columns": [
+            {
+              "name": "PathName_Orig{channel}",
+              "pattern": "{base_path}/images/{plate}/{acquisition_folder}/"
+            },
+            {
+              "name": "FileName_Orig{channel}",
+              "source": "filename"
+            },
+            {
+              "name": "Frame_Orig{channel}",
+              "value": "channel_index"
+            }
+          ]
+        }
+      }
+    },
+
+    "2": {
+      "name": "Cell Painting Apply Illumination",
+      "filter": "arm == 'painting'",
+      "grouping": ["plate", "well"],
+      "columns": {
+        "metadata": [
+          {"name": "Metadata_Plate", "source": "plate"},
+          {"name": "Metadata_Site", "source": "site"},
+          {"name": "Metadata_Well", "source": "well"}
+        ],
+        "per_channel_orig": {
+          "channels": "painting",
+          "columns": [
+            {
+              "name": "PathName_Orig{channel}",
+              "pattern": "{base_path}/images/{plate}/{acquisition_folder}/"
+            },
+            {
+              "name": "FileName_Orig{channel}",
+              "source": "filename"
+            },
+            {
+              "name": "Frame_Orig{channel}",
+              "value": "channel_index"
+            }
+          ]
+        },
+        "per_channel_illum": {
+          "channels": "painting",
+          "columns": [
+            {
+              "name": "FileName_Illum{channel}",
+              "pattern": "{plate}_Illum{channel}.npy"
+            },
+            {
+              "name": "PathName_Illum{channel}",
+              "pattern": "{base_path}/illum/{plate}"
+            }
+          ]
+        }
+      }
+    },
+
+    "3": {
+      "name": "Cell Painting Segment Check",
+      "filter": "arm == 'painting' and site in [0, 2]",
+      "grouping": ["plate", "well", "site"],
+      "columns": {
+        "metadata": [
+          {"name": "Metadata_Plate", "source": "plate"},
+          {"name": "Metadata_Site", "source": "site"},
+          {"name": "Metadata_Well", "source": "well"},
+          {
+            "name": "Metadata_Well_Value",
+            "expression": "ord(well[0]) * 1000 + int(well[1:])"
+          }
+        ],
+        "per_channel": {
+          "channels": "painting",
+          "columns": [
+            {
+              "name": "PathName_{channel}",
+              "pattern": "{base_path}/images_corrected/painting/{plate}/{plate}-{well}-{site}/"
+            },
+            {
+              "name": "FileName_{channel}",
+              "pattern": "Plate_{plate}_Well_{well}_Site_{site}_Corr{channel}.tiff"
+            }
+          ]
+        }
+      }
+    },
+
+    "5": {
+      "name": "Barcoding Illumination",
+      "filter": "arm == 'barcoding'",
+      "grouping": ["plate", "cycle"],
+      "columns": {
+        "metadata": [
+          {"name": "Metadata_Plate", "source": "plate"},
+          {"name": "Metadata_Site", "source": "site"},
+          {"name": "Metadata_Well", "source": "well"},
+          {"name": "Metadata_Cycle", "source": "cycle"}
+        ],
+        "per_channel": {
+          "channels": "barcoding",
+          "columns": [
+            {
+              "name": "PathName_Orig{channel}",
+              "pattern": "{base_path}/images/{plate}/{acquisition_folder}/"
+            },
+            {
+              "name": "FileName_Orig{channel}",
+              "source": "filename"
+            },
+            {
+              "name": "Frame_Orig{channel}",
+              "value": "channel_index"
+            }
+          ]
+        }
+      }
+    },
+
+    "6": {
+      "name": "Barcoding Apply Illumination + Alignment",
+      "filter": "arm == 'barcoding'",
+      "grouping": ["well", "site"],
+      "wide_format": true,
+      "cycles": "all",
+      "columns": {
+        "metadata": [
+          {"name": "Metadata_Plate", "source": "plate"},
+          {"name": "Metadata_Site", "source": "site"},
+          {"name": "Metadata_Well", "source": "well"},
+          {"name": "Metadata_Well_Value", "source": "well"}
+        ],
+        "per_cycle_per_channel_orig": {
+          "channels": "barcoding",
+          "columns": [
+            {
+              "name": "PathName_Cycle{cycle:02d}_Orig{channel}",
+              "pattern": "{base_path}/images/{plate}/{acquisition_folder}/"
+            },
+            {
+              "name": "FileName_Cycle{cycle:02d}_Orig{channel}",
+              "source": "filename"
+            },
+            {
+              "name": "Frame_Cycle{cycle:02d}_Orig{channel}",
+              "value": "channel_index"
+            }
+          ]
+        },
+        "per_cycle_per_channel_illum": {
+          "channels": "barcoding",
+          "columns": [
+            {
+              "name": "PathName_Cycle{cycle:02d}_Illum{channel}",
+              "pattern": "{base_path}/illum/{plate}"
+            },
+            {
+              "name": "FileName_Cycle{cycle:02d}_Illum{channel}",
+              "pattern": "{plate}_Cycle{cycle}_Illum{channel}.npy"
+            },
+            {
+              "name": "Frame_Cycle{cycle:02d}_Illum{channel}",
+              "value": 0
+            }
+          ]
+        }
+      }
+    },
+
+    "7": {
+      "name": "Barcode Preprocessing",
+      "filter": "arm == 'barcoding'",
+      "grouping": ["well", "site"],
+      "wide_format": true,
+      "cycles": "all",
+      "columns": {
+        "metadata": [
+          {"name": "Metadata_Plate", "source": "plate"},
+          {"name": "Metadata_Site", "source": "site"},
+          {"name": "Metadata_Well", "source": "well"},
+          {"name": "Metadata_Well_Value", "source": "well"}
+        ],
+        "per_cycle_per_channel": {
+          "channels": "barcoding",
+          "special_rules": {
+            "DNA": {"only_cycle": 1}
+          },
+          "columns": [
+            {
+              "name": "PathName_Cycle{cycle:02d}_{channel}",
+              "pattern": "{base_path}/images_aligned/barcoding/{plate}/{plate}-{well}-{site}/"
+            },
+            {
+              "name": "FileName_Cycle{cycle:02d}_{channel}",
+              "pattern": "Plate_{plate}_Well_{well}_Site_{site}_Cycle{cycle:02d}_{channel}.tiff"
+            }
+          ]
+        }
+      }
+    },
+
+    "9": {
+      "name": "Combined Analysis",
+      "filter": "arm == 'barcoding'",
+      "grouping": ["well", "tile"],
+      "tiles_per_well": 4,
+      "synthetic_tiles": true,
+      "columns": {
+        "metadata": [
+          {"name": "Metadata_Plate", "source": "plate"},
+          {"name": "Metadata_Site", "source": "tile"},
+          {"name": "Metadata_Well", "source": "well"},
+          {"name": "Metadata_Well_Value", "source": "well"}
+        ],
+        "barcoding_channels": {
+          "cycles": [1, 2, 3],
+          "channels": ["A", "C", "T", "G"],
+          "columns": [
+            {
+              "name": "PathName_Cycle{cycle:02d}_{channel}",
+              "pattern": "{base_path}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/Cycle{cycle:02d}_{channel}/"
+            },
+            {
+              "name": "FileName_Cycle{cycle:02d}_{channel}",
+              "pattern": "Cycle{cycle:02d}_{channel}_Site_{tile}.tiff"
+            }
+          ]
+        },
+        "barcoding_dna": {
+          "cycles": [1, 2, 3],
+          "columns": [
+            {
+              "name": "PathName_Cycle{cycle:02d}_DNA",
+              "pattern": "{base_path}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/Cycle{cycle:02d}_DNA/"
+            },
+            {
+              "name": "FileName_Cycle{cycle:02d}_DNA",
+              "pattern": "Cycle{cycle:02d}_DNA_Site_{tile}.tiff"
+            }
+          ]
+        },
+        "painting_channels": {
+          "channels": ["DNA", "CHN2", "Phalloidin"],
+          "columns": [
+            {
+              "name": "PathName_{channel}",
+              "pattern": "{base_path}/images_corrected_cropped/painting/{plate}/{plate}-{well}/{channel}/"
+            },
+            {
+              "name": "FileName_{channel}",
+              "pattern": "Corr{channel}_Site_{tile}.tiff"
+            }
+          ]
+        }
+      }
+    }
+  },
+
+  "special_values": {
+    "channel_index": "Index of channel in channels list (0-based)",
+    "acquisition_folder": "Parent folder name extracted from input path",
+    "filename": "Filename extracted from input path",
+    "tile": "Synthetic tile number (1 to tiles_per_well)"
+  }
+}

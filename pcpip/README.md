@@ -18,6 +18,7 @@ Each container is called with `PIPELINE_STEP` to specify what to run.
 
 - Docker Desktop with **16GB memory** for Pipeline 9 (Settings → Resources → Advanced)
 - Git installed
+- [uv](https://docs.astral.sh/uv/) for running Python scripts
 - Optional: [Pixi](https://pixi.sh) for running QC scripts locally
 
 ### Setup & Run
@@ -33,16 +34,17 @@ git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
 aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
 
 # 3. Filter LoadData CSVs to match the wells you want to process
-# IMPORTANT: This ensures illumination pipelines (1,5) only use your subset of data
+# CRITICAL: The wells specified here MUST match those in run_pcpip.sh WELLS array
+# Mismatch will cause pipeline failures or incorrect results!
 # Options: --wells "A1" for single well, or --wells "A1,A2,B1" for multiple wells
-uv run scripts/filter_loaddata_csvs_inplace.py --wells "A1"
+uv run scripts/load_data_filter.py --wells "A1"
 
 # 4. Generate LoadData CSVs from samplesheet
-# Creates load_data_pipeline{1-9}_generated.csv files
-# Validates against filtered reference (_revised.csv) files to ensure correctness
+# This script creates LoadData CSVs programmatically from your samplesheet metadata
+# The validation step builds confidence that generated CSVs are correct
+# Going forward, we rely on the generator rather than manual CSV editing
 # NOTE: Your samplesheet must already contain only the wells you filtered above (e.g., only A1)
-# If your samplesheet has different wells, create a filtered version first
-uv run scripts/loaddata_generator.py data/Source1/workspace/samplesheets/samplesheet1.csv --validate
+uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv --validate
 
 # 5. (Optional) Crop images for faster processing
 # Overwrites originals - re-download from S3 to restore
@@ -124,14 +126,14 @@ flowchart TD
     Alternative version that
     identifies & masks debris"] -.-> PCP6
 
-    PCP1 -.-> QC1["QC: Illum Montage (Pixi)
-    Verify circular & smooth"]
+    PCP1 -.-> QC1["QC: Illum Montage
+    Visual inspection"]
 
-    PCP3 -.-> QC3["QC: Segmentation Montage (Pixi)
-    Verify segmentation quality"]
+    PCP3 -.-> QC3["QC: Segmentation Montage
+    Visual inspection"]
 
-    PCP5 -.-> QC5["QC: Illum Montage (Pixi)
-    Verify circular & smooth"]
+    PCP5 -.-> QC5["QC: Illum Montage
+    Visual inspection"]
 
     %% Processing platforms
     classDef cellprofiler fill:#e6f3ff,stroke:#0066cc
@@ -155,12 +157,15 @@ pcpip/
 ├── plugins/                               # CellProfiler plugins (cloned separately)
 ├── scripts/                               # Processing scripts and utilities
 │   ├── run_pcpip.sh                       # Main pipeline orchestration script
+│   ├── load_data_generate.py              # Generate LoadData CSVs from samplesheet
+│   ├── load_data_filter.py                # Filter LoadData CSVs to specific wells
+│   ├── load_data_check.py                 # Validate LoadData CSV file paths exist
+│   ├── load_data_transform_p3.py          # Transform pipeline 3 CSVs (segmentation QC)
+│   ├── load_data_transform_p7.py          # Transform pipeline 7 CSVs (plate nesting)
+│   ├── load_data_transform_p9.py          # Transform pipeline 9 CSVs (cropped tiles)
 │   ├── stitch_crop.py                     # ImageJ/Fiji stitching and cropping
-│   ├── qc_illum_montage.py                # QC visualization for illumination functions
-│   ├── transform_pipeline3_csv.py         # CSV transformation for segmentation QC (skip pattern + plate nesting)
-│   ├── transform_pipeline7_csv.py         # CSV transformation for plate nesting from pipeline 6
-│   ├── transform_pipeline9_csv.py         # CSV transformation for cropped tiles
-│   └── check_csv_files.py                 # File validation utility
+│   ├── crop_preprocess.py                 # Crop images for faster testing
+│   └── montage.py                         # QC visualization montages
 ├── data/                                  # Unified data directory
 │   └── Source1/images/Batch1/
 │       ├── illum/                         # Illumination correction functions
@@ -174,52 +179,40 @@ pcpip/
 
 ### Quality Control (QC)
 
-The pipeline includes automatic QC checks after key processing steps. These checks help verify that illumination correction functions appear "vaguely circular and vaguely smooth" as expected.
+The pipeline currently includes visual QC via montage generation at key processing steps.
+
+#### Available QC Steps
+
+QC currently consists of creating visual montages using the `montage.py` script:
+
+- **1_qc_illum**: Montage of cell painting illumination corrections after Pipeline 1
+- **3_qc_seg**: Montage of segmentation check images after Pipeline 3
+- **5_qc_illum**: Montage of barcoding illumination corrections after Pipeline 5
 
 #### Running QC Steps
 
-QC steps are treated as standalone pipeline steps, just like stitching:
-
 ```bash
-# Run QC after Pipeline 1
+# Run QC montages via Docker
 PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
-
-# Run QC after Pipeline 5
+PIPELINE_STEP=3_qc_seg docker-compose run --rm qc
 PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
 
-# Run locally with Pixi (if installed)
-./scripts/qc_illum_montage.py \
+# Run montage script locally with Pixi
+pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
+  python scripts/montage.py \
   data/Source1/images/Batch1/illum/Plate1 \
-  data/Source1/images/Batch1/qc_reports/1_illumination_cp/Plate1/montage.png \
-  painting Plate1
-
-# Custom channels and cycles
-./scripts/qc_illum_montage.py \
-  data/Source1/images/Batch1/illum/Plate1 \
-  output.png barcoding Plate1 \
-  --cycles 1-2 --channels DNA,A,C
-
-# Interactive QC shell
-docker-compose run --rm qc-shell
-# Then inside container:
-./qc_illum_montage.py /app/data/Source1/images/Batch1/illum/Plate1 /app/data/test.png painting Plate1
+  output_montage.png \
+  --pattern ".*\\.npy$"
 ```
-
-#### QC Options
-
-- `--channels`: Specify channels to include (e.g., `DNA,Phalloidin`)
-- `--cycles`: Specify cycles for barcoding (e.g., `1-3` or `1,3,5`)
-- `--verbose/-v`: Enable detailed logging
-- Set `RUN_QC=false` environment variable to skip automatic QC
 
 ### Troubleshooting
 
-### Pipeline 9 Memory Issues
+#### Pipeline 9 Memory Issues
 
 - Requires Docker Desktop with 16GB+ memory allocation
 - If still failing, increase to 24GB or 32GB
 
-### Debug Commands
+#### Debug Commands
 
 ```bash
 # Check logs
@@ -236,34 +229,17 @@ rm -rf data/Source1/images/Batch1/{illum,images_aligned,images_corrected*}
 
 ```bash
 # Test single well stitching and cropping
-
 docker compose run --rm \
   -e STITCH_INPUT_BASE="/app/data/Source1/images/Batch1" \
   -e STITCH_TRACK_TYPE="painting" \
   -e STITCH_OUTPUT_TAG="Plate1-A1" \
-  -e STITCH_CHANNEL="DNA" \
   -e STITCH_AUTORUN="true" \
-  fiji /opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/stitch_crop.py > /tmp/stitch_crop_painting_Plate1_A1.log 2>&1
+  fiji /opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/stitch_crop.py
 
-grep "Saving /app/data/" /tmp/stitch_crop_painting_Plate1_A1.log
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrCHN2.tiff, width=5920, height=5920
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_1.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_2.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_3.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrCHN2/CorrCHN2_Site_4.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrCHN2.tiff, width=592, height=592
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrDNA.tiff, width=5920, height=5920
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_1.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_2.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_3.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrDNA/CorrDNA_Site_4.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrDNA.tiff, width=592, height=592
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched/painting/Plate1-A1/Stitched_CorrPhalloidin.tiff, width=5920, height=5920
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_1.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_2.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_3.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_cropped/painting/Plate1-A1/CorrPhalloidin/CorrPhalloidin_Site_4.tiff, width=2960, height=2960
-# INFO - Saving /app/data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1-A1/Stitched_CorrPhalloidin.tiff, width=592, height=592
+# Expected outputs per channel (3 channels × 3 output types = 9 files per channel):
+# - images_corrected_stitched/painting/Plate1/Plate1-A1/Stitched_Corr{CHANNEL}.tiff (1600×1600)
+# - images_corrected_cropped/painting/Plate1/Plate1-A1/Corr{CHANNEL}/Corr{CHANNEL}_Site_{1-4}.tiff (800×800)
+# - images_corrected_stitched_10X/painting/Plate1/Plate1-A1/Stitched_Corr{CHANNEL}.tiff (160×160)
 ```
 
 ### Maintainer Notes
@@ -281,7 +257,7 @@ BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
 # Function to safely run Python transformations in-place
 transform_csv() {
     local pipeline_num=$1
-    uv run scripts/transform_pipeline${pipeline_num}_csv.py \
+    uv run scripts/load_data_transform_p${pipeline_num}.py \
         ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.csv \
         ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp
     mv ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp \
@@ -315,12 +291,12 @@ These scripts validate that files exist and data is correctly structured. They'r
 # Run this after running Pipelines 1-8 to verify outputs before Pipeline 9
 BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
 duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_revised.csv') WHERE Metadata_Well = 'A1') TO '/tmp/load_data_pipeline9_revised_A1.csv' (FORMAT CSV, HEADER);"
-uv run scripts/check_csv_files.py /tmp/load_data_pipeline9_revised_A1.csv
+uv run scripts/load_data_check.py /tmp/load_data_pipeline9_revised_A1.csv
 # Expected output: Total: 64, Found: 64, Missing: 0
 
 # Check any CSV for file existence
-uv run scripts/check_csv_files.py ${BASE_DIR}/load_data_pipeline3_revised.csv
-uv run scripts/check_csv_files.py ${BASE_DIR}/load_data_pipeline7_revised.csv
+uv run scripts/load_data_check.py ${BASE_DIR}/load_data_pipeline3_revised.csv
+uv run scripts/load_data_check.py ${BASE_DIR}/load_data_pipeline7_revised.csv
 ```
 
 #### Creating and Uploading Cropped Input Datasets

@@ -25,7 +25,7 @@ Reference LoadData CSV files for validation:
   https://nf-pooled-cellpainting-sandbox.s3.amazonaws.com/data/test-data/fix-s1/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed/load_data_pipeline{1-9}_revised.csv
 
 Usage:
-  uv run docs/loaddata_generator.py assets/samplesheet.csv
+  uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv
 """
 
 import pandas as pd

@@ -9,8 +9,8 @@
 Filter LoadData CSV files in place to only include specified wells.
 
 Usage:
-  uv run scripts/filter_loaddata_csvs_inplace.py --wells A1
-  uv run scripts/filter_loaddata_csvs_inplace.py --wells A1,A2,B1
+  uv run scripts/load_data_filter.py --wells A1
+  uv run scripts/load_data_filter.py --wells A1,A2,B1
 """
 
 import pandas as pd

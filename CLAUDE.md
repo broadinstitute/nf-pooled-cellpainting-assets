@@ -1,102 +1,140 @@
-# CLAUDE.md - AI Assistant Context
+# CLAUDE.md
 
-## Project Overview
-This repository contains **nf-pooled-cellpainting-assets**, supporting assets for Nextflow-based pooled cell painting analysis pipelines. This repo houses reusable components, reference implementations, and demo workflows.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-### Repository Structure
-- `pcpip/` - Miniaturized PCPIP demo (containerized CellProfiler workflow)
-- *(Future)* - Additional pipeline components, reference datasets, shared configs, etc.
+## Repository Purpose
 
-### Current Focus: PCPIP Demo (`pcpip/`)
-- **Purpose**: Reference implementation of PCPIP workflow
-- **Scope**: End-to-end demo that runs in a single script
-- **Technology**: Docker + CellProfiler 4.2.6 + Bio-Formats
+Supporting assets and resources for the pooled Cell Painting Nextflow pipeline, primarily containing the containerized PCPIP (Pooled Cell Painting Image Processing) demo workflow.
 
-## General Principles
+## Key Commands
 
-### Repository Organization
-- **Self-contained components**: Each directory should be independently usable
-- **Documentation-first**: Every component includes README.md with setup/usage
-- **Containerization**: Prefer Docker for reproducibility and portability
-- **Reference implementations**: Provide working examples, not just configs
+### Running the PCPIP Pipeline
 
-### Asset Categories *(as repo grows)*
-- **Demo workflows**: Complete end-to-end examples (like `pcpip/`)
-- **Shared configurations**: Reusable configs for Nextflow/CellProfiler/etc.
-- **Reference datasets**: Curated test data for validation
-- **Utility scripts**: Common tools for pipeline development
+Always run from the `pcpip/` directory:
 
-## Domain Knowledge
+```bash
+cd pcpip/
 
-### Cell Painting Pipeline Stages
-1. **CP_Illum**: Calculate illumination correction from painting images
-2. **CP_Apply_Illum**: Apply corrections to painting images
-3. **CP_SegmentationCheck**: Validate cell segmentation quality
-4. **BC_Illum**: Calculate illumination correction for barcode images
-5. **BC_Apply_Illum**: Apply corrections to barcode images
-6. **BC_Preprocess**: Barcode preprocessing (requires plugins)
-7. **Analysis**: Feature extraction and colocalization analysis
+# Prerequisites setup
+git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
+aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
 
-### File Types & Formats
-- **Images**: `.ome.tiff` files with Bio-Formats metadata
-- **Pipelines**: `.cppipe` files (CellProfiler pipeline definitions)
-- **Data**: CSV files with path/metadata configurations
-- **Outputs**: TIFF images, HDF5 measurements, analysis CSVs
+# Filter and generate LoadData CSVs
+uv run scripts/load_data_filter.py --wells "A1"
+uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv --validate
 
-## Common Tasks
+# Run pipelines (in order)
+PIPELINE_STEP=1 docker-compose run --rm cellprofiler
+PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
+PIPELINE_STEP="2,3" docker-compose run --rm cellprofiler
+PIPELINE_STEP=3_qc_seg docker-compose run --rm qc
+PIPELINE_STEP=4 docker-compose run --rm fiji
+PIPELINE_STEP=5 docker-compose run --rm cellprofiler
+PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
+PIPELINE_STEP="6,7" docker-compose run --rm cellprofiler
+PIPELINE_STEP=8 docker-compose run --rm fiji
+PIPELINE_STEP=9 docker-compose run --rm cellprofiler
+```
 
-### Modifying Pipeline Configuration
-- Edit `scripts/run_pcpip.sh` variables: `PLATE`, `WELLS`, `SITES`, `CYCLES`
-- Pipeline execution controlled by `PIPELINE_CONFIG` associative array
-- Memory behavior: Set `background="false"` for sequential execution
+### Cropping Images for Faster Testing
 
-### Path Handling
-- **Setup**: CSV files need path corrections for containerization
-- **Pattern**: Replace hardcoded host paths with `/app/data/`
-- **Well directories**: Convert `Plate1-WellA1` → `Plate1-A1` format
+```bash
+# Crop to 25% size (overwrites originals)
+CROP_PERCENT=25 docker-compose run --rm cellprofiler python3 /app/scripts/crop_preprocess.py
 
-### Debugging Approach
-1. Check logs in `data/logs/[timestamp]/`
-2. Use interactive shell: `docker-compose run --rm cellprofiler-shell`
-3. Verify data structure: `ls -la /app/data/`
-4. Run with debug: `bash -x /app/scripts/run_pcpip.sh`
+# When running stitching after cropping, use same CROP_PERCENT
+CROP_PERCENT=25 PIPELINE_STEP=4 docker-compose run --rm fiji
+CROP_PERCENT=25 PIPELINE_STEP=8 docker-compose run --rm fiji
+```
 
-## Important Gotchas
+### Interactive Debugging
 
-### Memory Issues
-- **Symptom**: Processes getting killed during pipeline 6-9
-- **Cause**: Multiple CellProfiler instances + Java + large images
-- **Solution**: Sequential execution for heavy pipelines
+```bash
+docker-compose run --rm cellprofiler-shell
+docker-compose run --rm fiji-shell
+docker-compose run --rm qc-shell
+```
 
-### CSV Path Corrections
-- Downloaded datasets contain hardcoded host paths
-- Must run sed replacements during setup
-- Both host paths AND well directory naming need fixes
+### QC Visualization
 
-### Plugin Dependencies
-- Pipelines 7,9 require CellProfiler-plugins repository
-- Clone to `plugins/` directory before running
-- Plugin path: `/app/plugins/active_plugins/` in container
+```bash
+# Using Pixi (locally)
+pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
+  python scripts/montage.py data/Source1/images/Batch1/illum/Plate1 output.png --pattern ".*\\.npy$"
+```
 
-## File Priorities
+### Linting and Code Quality
 
-### Critical Files
-- `scripts/run_pcpip.sh`: Main orchestration script
-- `docker-compose.yml`: Container configuration
-- `pipelines/*.cppipe`: CellProfiler pipeline definitions
-- `README.md`: User-facing documentation
+```bash
+# Pre-commit hooks are configured
+pre-commit run --all-files
 
-### Configuration Files
-- `.gitignore`: Excludes data/ and plugins/
-- `.pre-commit-config.yaml`: Code quality hooks
+# Ruff is used for Python linting/formatting
+ruff check --fix .
+ruff format .
+```
 
-## Development Workflow
-1. **Test locally**: Use miniaturized dataset
-2. **Memory-aware**: Consider parallel vs sequential execution
-3. **Container-first**: All paths assume containerized environment
-4. **Document changes**: Keep README.md current with major changes
+## Architecture Overview
 
-## Testing
-- **Dataset**: FIX-S1 test data from starrynight releases
-- **Validation**: Check output directories and log files
-- **Performance**: Monitor memory usage during execution
+### Pipeline Processing Flow
+
+The PCPIP workflow consists of 9 main pipelines split across two tracks:
+
+**Cell Painting Track (Pipelines 1-4):**
+
+- Pipeline 1: Calculate illumination correction functions
+- Pipeline 2: Apply corrections and segment cells
+- Pipeline 3: Verify segmentation quality
+- Pipeline 4: Stitch fields of view and crop into tiles
+
+**Barcoding Track (Pipelines 5-8):**
+
+- Pipeline 5: Calculate illumination corrections for barcoding
+- Pipeline 6: Apply corrections and align cycles
+- Pipeline 7: Compensate channels and call barcodes
+- Pipeline 8: Stitch and crop (matching Cell Painting crops)
+
+**Analysis (Pipeline 9):**
+
+- Aligns Cell Painting and Barcoding images
+- Performs final segmentation and feature measurement
+
+### Container Architecture
+
+Three specialized Docker containers handle different pipeline components:
+
+- **cellprofiler**: Runs CellProfiler-based pipelines (1-3, 5-7, 9)
+- **fiji**: Handles ImageJ/Fiji stitching operations (4, 8)
+- **qc**: Generates QC visualization montages using Python
+
+Containers are orchestrated via `docker-compose.yml` with the `PIPELINE_STEP` environment variable controlling execution.
+
+### Critical Data Flow
+
+1. **Wells filtering**: The wells specified in `load_data_filter.py` MUST match those in `run_pcpip.sh` WELLS array
+2. **LoadData CSVs**: Generated programmatically from samplesheet metadata, not manually edited
+3. **Crop percentage**: Must be consistent between preprocessing and stitching steps
+4. **Output structure**: Follows Source1/images/Batch1/ nesting pattern
+
+### Key Script Responsibilities
+
+- `run_pcpip.sh`: Main orchestration script that routes to appropriate pipeline based on PIPELINE_STEP
+- `load_data_filter.py`: Filters LoadData CSVs to specific wells for processing
+- `load_data_generate.py`: Creates LoadData CSVs from samplesheet with validation
+- `stitch_crop.py`: ImageJ/Fiji script for stitching and cropping operations
+- `montage.py`: Creates visual QC montages from pipeline outputs
+- `crop_preprocess.py`: Crops input images for faster testing (destructive operation)
+
+## Important Constraints
+
+1. **Memory Requirements**: Pipeline 9 requires Docker Desktop with 16GB+ memory allocation
+2. **Well Consistency**: Wells in LoadData CSVs must match WELLS array in run_pcpip.sh
+3. **Plugin Dependencies**: CellProfiler plugins must be cloned before running pipelines
+4. **Crop Consistency**: Same CROP_PERCENT must be used for preprocessing and stitching
+5. **Data Path Structure**: Strict adherence to Source1/images/Batch1/ directory structure required
+
+## Related Repositories
+
+- Main pipeline: <https://github.com/seqera-services/nf-pooled-cellpainting>
+- Infrastructure: <https://github.com/broadinstitute/nf-pooled-cellpainting-infra>
+- Working directories may include: `/Users/shsingh/Documents/GitHub/nf/starrynight/`

@@ -64,10 +64,9 @@ def pipeline1(samplesheet_df):
 
         # Add all data naturally without worrying about column order
         for ch in channels:
-            mapped = CHANNEL_MAP.get(ch, ch)
-            data[f"PathName_Orig{mapped}"] = plate_dir
-            data[f"FileName_Orig{mapped}"] = filename
-            data[f"Frame_Orig{mapped}"] = channels.index(ch)
+            data[f"PathName_Orig{ch}"] = plate_dir
+            data[f"FileName_Orig{ch}"] = filename
+            data[f"Frame_Orig{ch}"] = channels.index(ch)
 
         rows.append(data)
 
@@ -101,12 +100,11 @@ def pipeline2(samplesheet_df):
 
         # Add all data naturally without worrying about column order
         for ch in channels:
-            mapped = CHANNEL_MAP.get(ch, ch)
-            data[f"PathName_Orig{mapped}"] = plate_dir
-            data[f"FileName_Orig{mapped}"] = filename
-            data[f"Frame_Orig{mapped}"] = channels.index(ch)
-            data[f"PathName_Illum{mapped}"] = illum_dir
-            data[f"FileName_Illum{mapped}"] = f"{row['plate']}_Illum{mapped}.npy"
+            data[f"PathName_Orig{ch}"] = plate_dir
+            data[f"FileName_Orig{ch}"] = filename
+            data[f"Frame_Orig{ch}"] = channels.index(ch)
+            data[f"PathName_Illum{ch}"] = illum_dir
+            data[f"FileName_Illum{ch}"] = f"{row['plate']}_Illum{ch}.npy"
 
         rows.append(data)
 
@@ -138,10 +136,9 @@ def pipeline3(samplesheet_df):
 
         # Add all data naturally without worrying about column order
         for ch in channels:
-            mapped = CHANNEL_MAP.get(ch, ch)
-            data[f"PathName_{mapped}"] = output_dir
-            data[f"FileName_{mapped}"] = (
-                f"Plate_{row['plate']}_Well_{row['well']}_Site_{row['site']}_Corr{mapped}.tiff"
+            data[f"PathName_{ch}"] = output_dir
+            data[f"FileName_{ch}"] = (
+                f"Plate_{row['plate']}_Well_{row['well']}_Site_{row['site']}_Corr{ch}.tiff"
             )
 
         rows.append(data)
@@ -185,10 +182,9 @@ def pipeline5(samplesheet_df):
 
         # Add all data naturally without worrying about column order
         for ch in channels:
-            mapped = CHANNEL_MAP.get(ch, ch)
-            data[f"PathName_Orig{mapped}"] = cycle_dir
-            data[f"FileName_Orig{mapped}"] = filename
-            data[f"Frame_Orig{mapped}"] = channels.index(ch)
+            data[f"PathName_Orig{ch}"] = cycle_dir
+            data[f"FileName_Orig{ch}"] = filename
+            data[f"Frame_Orig{ch}"] = channels.index(ch)
 
         rows.append(data)
 
@@ -223,23 +219,21 @@ def pipeline6(samplesheet_df):
             illum_dir = f"{BASE_PATH}/illum/{plate}"  # No trailing slash for illum
 
             for ch in channels:
-                mapped = CHANNEL_MAP.get(ch, ch)
-
                 # Use different naming convention for pipeline 6
                 # Original images
-                data[f"PathName_Cycle{cycle:02d}_Orig{mapped}"] = cycle_dir
-                data[f"FileName_Cycle{cycle:02d}_Orig{mapped}"] = Path(
+                data[f"PathName_Cycle{cycle:02d}_Orig{ch}"] = cycle_dir
+                data[f"FileName_Cycle{cycle:02d}_Orig{ch}"] = Path(
                     cycle_row["path"]
                 ).name
-                data[f"Frame_Cycle{cycle:02d}_Orig{mapped}"] = channels.index(ch)
+                data[f"Frame_Cycle{cycle:02d}_Orig{ch}"] = channels.index(ch)
 
                 # Illumination files
-                data[f"PathName_Cycle{cycle:02d}_Illum{mapped}"] = illum_dir
-                data[f"FileName_Cycle{cycle:02d}_Illum{mapped}"] = (
-                    f"{plate}_Cycle{cycle}_Illum{mapped}.npy"
+                data[f"PathName_Cycle{cycle:02d}_Illum{ch}"] = illum_dir
+                data[f"FileName_Cycle{cycle:02d}_Illum{ch}"] = (
+                    f"{plate}_Cycle{cycle}_Illum{ch}.npy"
                 )
                 # Add Frame column for illumination (even though .npy files don't have frames)
-                data[f"Frame_Cycle{cycle:02d}_Illum{mapped}"] = 0
+                data[f"Frame_Cycle{cycle:02d}_Illum{ch}"] = 0
 
         rows.append(data)
 
@@ -270,7 +264,7 @@ def pipeline7(samplesheet_df):
         # Predict Pipeline 6 outputs for each cycle/channel
         for cycle in sorted(group["cycle"].unique()):
             for ch in channels:
-                if ch == "DAPI":
+                if ch == "DNA":
                     # DNA only from cycle 1
                     if cycle == 1:
                         col = f"Cycle{cycle:02d}_DNA"
@@ -373,19 +367,6 @@ def generate_all(samplesheet_path):
         # 8 is FIJI stitching - no CSV
         9: pipeline9(df),
     }
-
-
-# Maps samplesheet channel names to CellProfiler expected names
-CHANNEL_MAP = {
-    "DNA": "DNA",
-    "DAPI": "DNA",  # Barcoding uses DAPI for DNA channel
-    "CHN2-AF488": "CHN2",
-    "Phalloidin": "Phalloidin",
-    "A": "A",
-    "C": "C",
-    "T": "T",
-    "G": "G",  # SBS bases
-}
 
 
 def normalize_paths_in_df(df):

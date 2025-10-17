@@ -360,7 +360,7 @@ To share pipeline outputs for reproducibility:
 
 ```bash
 # Set your fixture and AWS profile
-FIXTURE=fix-s1  # or fix-l1
+export FIXTURE=fix-s1  # or fix-l1
 export AWS_PROFILE=your-profile-name  # Or configure AWS credentials as appropriate
 
 # Step 1: Upload data (excluding logs)
@@ -385,6 +385,8 @@ aws s3 sync data/logs/ s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXT
 #### Comparing Local Outputs with S3
 
 To verify local pipeline outputs match the reference outputs on S3:
+
+**Note**: Fiji stitching (steps 4/8) may produce non-deterministic results (~1-2% of pixels with minor intensity differences). This is speculative but based on observed behavior. Consequently, all downstream outputs (stitched images, cropped tiles, and Pipeline 9 analysis) may differ slightly from S3 reference outputs even when inputs are identical. CellProfiler steps (1-3, 5-7) should match exactly.
 
 ```bash
 # Set your fixture

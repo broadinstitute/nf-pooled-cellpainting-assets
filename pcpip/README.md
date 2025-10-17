@@ -21,6 +21,17 @@ Each container is called with `PIPELINE_STEP` to specify what to run.
 - [uv](https://docs.astral.sh/uv/) for running Python scripts
 - Optional: [Pixi](https://pixi.sh) for running QC scripts locally
 
+### Test Data Fixtures
+
+Multiple test datasets are available in S3. Choose the fixture that matches your testing needs:
+
+| Fixture | Description | Size | S3 Path |
+|---------|-------------|------|---------|
+| **fix-s1** | Standard test data (full resolution) | ~3GB | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/` |
+| **fix-l1** | Large test dataset (full plate) | TBD | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-l1/` |
+
+**To use a different fixture**: Replace the fixture name in step 2 below.
+
 ### Setup & Run
 
 ```bash
@@ -30,8 +41,10 @@ cd pcpip/
 # 1. Clone plugins
 git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
 
-# 2. Get test data (~3GB) including samplesheet
-aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request
+# 2. Get test data including samplesheet
+# Choose your fixture: fix-s1 (standard), fix-l1 (large)
+FIXTURE=fix-s1
+aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ data/ --no-sign-request
 
 # 3. Filter LoadData CSVs to match the wells you want to process
 # CRITICAL: The wells specified here MUST match those in run_pcpip.sh WELLS array
@@ -49,7 +62,7 @@ uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samples
 # 5. (Optional) Crop images for faster processing
 # Overwrites originals - re-download from S3 to restore
 # Options: 25 (fastest), 50 (balanced), 75 (conservative)
-CROP_PERCENT=25 docker-compose run --rm cellprofiler python3 /app/scripts/crop_preprocess.py
+CROP_PERCENT=25 docker-compose run --rm cellprofiler python3 /app/scripts/crop_preprocess.py --fixture ${FIXTURE}
 
 # 6. Run complete workflow with QC
 # Note: Stitching steps use CROP_PERCENT to adjust tile dimensions - use the same value as above!
@@ -304,9 +317,12 @@ uv run scripts/load_data_check.py ${BASE_DIR}/load_data_pipeline7_revised.csv
 To create a pre-cropped input dataset for faster testing:
 
 ```bash
+# Set your fixture
+FIXTURE=fix-s1  # or fix-l1
+
 # Step 1: Download original input data to a temp location (NOT the working data/ directory)
 mkdir -p /tmp/pcpip-input
-aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ /tmp/pcpip-input/ \
+aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ /tmp/pcpip-input/ \
   --no-sign-request
 
 # Step 2: Run cropping to create a 25% size version
@@ -315,33 +331,35 @@ docker-compose run --rm \
   -v /tmp/pcpip-input:/input \
   cellprofiler-shell \
   python /app/scripts/crop_preprocess.py \
-    --input_dir /input/Source1/images/Batch1/images
+    --input_dir /input/Source1/images/Batch1/images \
+    --fixture ${FIXTURE}
 
 # Step 3: Upload cropped INPUT dataset to S3 (as a new input dataset, not output)
 
 # Set your AWS profile (if needed)
 export AWS_PROFILE=your-profile-name  # Or configure AWS credentials as appropriate
 
-aws s3 sync /tmp/pcpip-input/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1_sub25/ \
+aws s3 sync /tmp/pcpip-input/ s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}_sub25/ \
   --size-only
 
 # Step 4: Clean up temp directories
 rm -rf /tmp/pcpip-input
 ```
 
-Users can then switch between full and cropped input datasets by changing the dataset path in their configuration from `fix-s1/` to `fix-s1_sub25/`.
+Users can then switch between full and cropped input datasets by changing the dataset path in their configuration from `${FIXTURE}/` to `${FIXTURE}_sub25/`.
 
 #### Uploading Results to S3
 
 To share pipeline outputs for reproducibility:
 
 ```bash
-# Set your AWS profile (if needed)
+# Set your fixture and AWS profile
+FIXTURE=fix-s1  # or fix-l1
 export AWS_PROFILE=your-profile-name  # Or configure AWS credentials as appropriate
 
 # Step 1: Upload data (excluding logs)
 # Add `--delete` flag to remove S3 files not present locally, BUT USE WITH CAUTION!
-aws s3 sync data/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/ \
+aws s3 sync data/ s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}-output/ \
   --size-only \
   --no-follow-symlinks \
   --exclude "logs/*" \
@@ -351,7 +369,7 @@ aws s3 sync data/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-outp
 # Step 2: Clean up logs first! Remove iteration/test runs, keep only final pipeline runs
 rm -rf data/logs/2025-*-test/  # Example: remove test directories
 # Then sync logs separately
-aws s3 sync data/logs/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/logs/ \
+aws s3 sync data/logs/ s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}-output/logs/ \
   --size-only
 ```
 
@@ -363,10 +381,13 @@ aws s3 sync data/logs/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1
 To verify local pipeline outputs match the reference outputs on S3:
 
 ```bash
+# Set your fixture
+FIXTURE=fix-s1  # or fix-l1
+
 # Compare Batch1 outputs (excluding temporary files and CellProfiler CSVs)
 pixi exec --spec rclone -- rclone check \
   data/Source1/images/Batch1 \
-  :s3,provider=AWS,region=us-east-1:nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/Source1/images/Batch1 \
+  :s3,provider=AWS,region=us-east-1:nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}-output/Source1/images/Batch1 \
   --skip-links \
   --exclude "*_Image.csv" \
   --exclude "*_Experiment.csv" \
@@ -376,7 +397,7 @@ pixi exec --spec rclone -- rclone check \
 # Compare analysis outputs separately
 pixi exec --spec rclone -- rclone check \
   data/Source1/workspace/analysis \
-  :s3,provider=AWS,region=us-east-1:nf-pooled-cellpainting-sandbox/data/test-data/fix-s1-output/Source1/workspace/analysis \
+  :s3,provider=AWS,region=us-east-1:nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}-output/Source1/workspace/analysis \
   --skip-links \
   --exclude "Image.csv" \
   --exclude "Experiment.csv" \

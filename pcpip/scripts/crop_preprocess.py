@@ -80,6 +80,11 @@ def main():
         default=None,
         help="Output directory (if not specified, crops in-place)",
     )
+    parser.add_argument(
+        "--fixture",
+        default="fix-s1",
+        help="Test data fixture name (e.g., fix-s1, fix-l1)",
+    )
     args = parser.parse_args()
 
     # Configuration
@@ -148,7 +153,7 @@ def main():
         print("Images have been cropped in-place.")
         print("To restore original images, re-download from S3:")
         print(
-            "  aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/ data/ --no-sign-request"
+            f"  aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/{args.fixture}/ data/ --no-sign-request"
         )
 
 

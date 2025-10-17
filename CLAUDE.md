@@ -21,6 +21,7 @@ When working with this codebase, be aware of these critical requirements:
 3. **LoadData CSVs**: Generated programmatically via `load_data_generate.py`, not manually edited
 4. **Memory**: Pipeline 9 requires Docker Desktop with 16GB+ memory allocation
 5. **Data Structure**: Strict adherence to `Source1/images/Batch1/` directory nesting required
+6. **Fixture Selection**: Choose test data fixture (fix-s1, fix-l1) at start; use `--fixture` flag for consistency in crop_preprocess.py
 
 ## Quick Reference
 
@@ -29,8 +30,11 @@ When working with this codebase, be aware of these critical requirements:
 cd pcpip/
 git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
 
-# Get pre-cropped test data (recommended for faster testing)
-aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1_sub25/ data/ --profile cslab
+# Get test data
+# Available fixtures: fix-s1 (standard), fix-l1 (large)
+# Add _sub25 suffix for pre-cropped versions (e.g., fix-s1_sub25)
+FIXTURE=fix-s1_sub25
+aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ data/ --profile cslab
 
 # Generate LoadData CSVs
 uv run scripts/load_data_filter.py --wells "A1"

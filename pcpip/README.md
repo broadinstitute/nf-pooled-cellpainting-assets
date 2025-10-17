@@ -25,10 +25,10 @@ Each container is called with `PIPELINE_STEP` to specify what to run.
 
 Multiple test datasets are available in S3. Choose the fixture that matches your testing needs:
 
-| Fixture | Description | Size | S3 Path |
-|---------|-------------|------|---------|
-| **fix-s1** | Standard test data (full resolution) | ~3GB | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/` |
-| **fix-l1** | Large test dataset (full plate) | TBD | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-l1/` |
+| Fixture | Description | S3 Path |
+|---------|-------------|---------|
+| **fix-s1** | 3 wells (A1, A2, B1) × 4 sites each | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/` |
+| **fix-l1** | 1 well (A1) × 1025 sites (full well) | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-l1/` |
 
 **To use a different fixture**: Replace the fixture name in step 2 below.
 

@@ -16,7 +16,7 @@ Each container is called with `PIPELINE_STEP` to specify what to run.
 
 ### Prerequisites
 
-- Docker Desktop with **16GB memory** for Pipeline 9 (Settings → Resources → Advanced)
+- Docker Desktop (macOS/Windows) or Podman (Linux) with **16GB memory** for Pipeline 9
 - Git installed
 - [uv](https://docs.astral.sh/uv/) for running Python scripts
 - Optional: [Pixi](https://pixi.sh) for running QC scripts locally
@@ -37,6 +37,9 @@ Multiple test datasets are available in S3. Choose the fixture that matches your
 ```bash
 # Run all commands from the pcpip/ directory
 cd pcpip/
+
+# 0. Set compose command (use podman-compose on Linux/Podman, docker-compose elsewhere)
+COMPOSE_CMD=docker-compose  # or: COMPOSE_CMD=podman-compose
 
 # 1. Clone plugins
 git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
@@ -62,22 +65,25 @@ uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samples
 # 5. (Optional) Crop images for faster processing
 # Overwrites originals - re-download from S3 to restore
 # Options: 25 (fastest), 50 (balanced), 75 (conservative)
-CROP_PERCENT=25 docker-compose run --rm cellprofiler python3 /app/scripts/crop_preprocess.py --fixture ${FIXTURE}
+CROP_PERCENT=25 ${COMPOSE_CMD} run --rm cellprofiler python3 /app/scripts/crop_preprocess.py --fixture ${FIXTURE}
 
-# 6. Run complete workflow with QC
+# 6. (Podman only) Fix permissions for volume mounts
+[ "$COMPOSE_CMD" = "podman-compose" ] && chmod -R 777 data/Source1/images/Batch1/ data/logs/
+
+# 7. Run complete workflow with QC
 # Note: Stitching steps use CROP_PERCENT to adjust tile dimensions - use the same value as above!
-PIPELINE_STEP=1 docker-compose run --rm cellprofiler
-PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
-PIPELINE_STEP="2,3" docker-compose run --rm cellprofiler
-PIPELINE_STEP=3_qc_seg docker-compose run --rm qc
-CROP_PERCENT=25 PIPELINE_STEP=4 docker-compose run --rm fiji
+PIPELINE_STEP=1 ${COMPOSE_CMD} run --rm cellprofiler
+PIPELINE_STEP=1_qc_illum ${COMPOSE_CMD} run --rm qc
+PIPELINE_STEP="2,3" ${COMPOSE_CMD} run --rm cellprofiler
+PIPELINE_STEP=3_qc_seg ${COMPOSE_CMD} run --rm qc
+CROP_PERCENT=25 PIPELINE_STEP=4 ${COMPOSE_CMD} run --rm fiji
 
-PIPELINE_STEP=5 docker-compose run --rm cellprofiler
-PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
-PIPELINE_STEP="6,7" docker-compose run --rm cellprofiler
-CROP_PERCENT=25 PIPELINE_STEP=8 docker-compose run --rm fiji
+PIPELINE_STEP=5 ${COMPOSE_CMD} run --rm cellprofiler
+PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
+PIPELINE_STEP="6,7" ${COMPOSE_CMD} run --rm cellprofiler
+CROP_PERCENT=25 PIPELINE_STEP=8 ${COMPOSE_CMD} run --rm fiji
 
-PIPELINE_STEP=9 docker-compose run --rm cellprofiler
+PIPELINE_STEP=9 ${COMPOSE_CMD} run --rm cellprofiler
 ```
 
 <details>
@@ -205,10 +211,10 @@ QC currently consists of creating visual montages using the `montage.py` script:
 #### Running QC Steps
 
 ```bash
-# Run QC montages via Docker
-PIPELINE_STEP=1_qc_illum docker-compose run --rm qc
-PIPELINE_STEP=3_qc_seg docker-compose run --rm qc
-PIPELINE_STEP=5_qc_illum docker-compose run --rm qc
+# Run QC montages via Docker/Podman
+PIPELINE_STEP=1_qc_illum ${COMPOSE_CMD} run --rm qc
+PIPELINE_STEP=3_qc_seg ${COMPOSE_CMD} run --rm qc
+PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
 
 # Run montage script locally with Pixi
 pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
@@ -233,8 +239,8 @@ ls data/logs/*/
 tail data/logs/*/pipeline*.log
 
 # Interactive shells
-docker-compose run --rm cellprofiler-shell
-docker-compose run --rm fiji-shell
+${COMPOSE_CMD} run --rm cellprofiler-shell
+${COMPOSE_CMD} run --rm fiji-shell
 
 # Cleanup outputs
 rm -rf data/Source1/images/Batch1/{illum,images_aligned,images_corrected*}
@@ -242,7 +248,7 @@ rm -rf data/Source1/images/Batch1/{illum,images_aligned,images_corrected*}
 
 ```bash
 # Test single well stitching and cropping
-docker compose run --rm \
+${COMPOSE_CMD} run --rm \
   -e STITCH_INPUT_BASE="/app/data/Source1/images/Batch1" \
   -e STITCH_TRACK_TYPE="painting" \
   -e STITCH_OUTPUT_TAG="Plate1-A1" \
@@ -326,7 +332,7 @@ aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ /tmp/
   --no-sign-request
 
 # Step 2: Run cropping to create a 25% size version
-docker-compose run --rm \
+${COMPOSE_CMD} run --rm \
   -e CROP_PERCENT=25 \
   -v /tmp/pcpip-input:/input \
   cellprofiler-shell \

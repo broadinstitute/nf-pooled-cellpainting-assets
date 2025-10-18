@@ -67,7 +67,7 @@ uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samples
 CROP_PERCENT=25 ${COMPOSE_CMD} run --rm cellprofiler python3 /app/scripts/crop_preprocess.py --fixture ${FIXTURE}
 
 # 6. (Podman only) Fix permissions for volume mounts
-[ "$COMPOSE_CMD" = "podman-compose" ] && chmod -R 777 data/Source1/images/Batch1/ data/logs/
+[ "$COMPOSE_CMD" = "podman-compose" ] && mkdir -p data/logs/ && chmod -R 777 data/Source1/images/Batch1/ data/logs/
 
 # 7. Run complete workflow with QC
 # Note: Stitching steps use CROP_PERCENT to adjust tile dimensions - use the same value as above!
@@ -75,11 +75,19 @@ PIPELINE_STEP=1 ${COMPOSE_CMD} run --rm cellprofiler
 PIPELINE_STEP=1_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP="2,3" ${COMPOSE_CMD} run --rm cellprofiler
 PIPELINE_STEP=3_qc_seg ${COMPOSE_CMD} run --rm qc
+
+# (Podman only) Fix permissions for volume mounts
+[ "$COMPOSE_CMD" = "podman-compose" ] && chmod -R 777 data/Source1/images/
+
 CROP_PERCENT=25 PIPELINE_STEP=4 ${COMPOSE_CMD} run --rm fiji
 
 PIPELINE_STEP=5 ${COMPOSE_CMD} run --rm cellprofiler
 PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP="6,7" ${COMPOSE_CMD} run --rm cellprofiler
+
+# (Podman only) Fix permissions for volume mounts
+[ "$COMPOSE_CMD" = "podman-compose" ] && chmod -R 777 data/Source1/images/
+
 CROP_PERCENT=25 PIPELINE_STEP=8 ${COMPOSE_CMD} run --rm fiji
 
 PIPELINE_STEP=9 ${COMPOSE_CMD} run --rm cellprofiler

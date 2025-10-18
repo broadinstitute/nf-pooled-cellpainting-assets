@@ -77,7 +77,7 @@ PIPELINE_STEP="2,3" ${COMPOSE_CMD} run --rm cellprofiler
 PIPELINE_STEP=3_qc_seg ${COMPOSE_CMD} run --rm qc
 
 # (Podman only) Fix permissions for volume mounts
-[ "$COMPOSE_CMD" = "podman-compose" ] && chmod -R 777 data/Source1/images/
+[ "$COMPOSE_CMD" = "podman-compose" ] && sudo chmod -R 777 data/Source1/images/
 
 CROP_PERCENT=25 PIPELINE_STEP=4 ${COMPOSE_CMD} run --rm fiji
 
@@ -86,7 +86,7 @@ PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP="6,7" ${COMPOSE_CMD} run --rm cellprofiler
 
 # (Podman only) Fix permissions for volume mounts
-[ "$COMPOSE_CMD" = "podman-compose" ] && chmod -R 777 data/Source1/images/
+[ "$COMPOSE_CMD" = "podman-compose" ] && sudo chmod -R 777 data/Source1/images/
 
 CROP_PERCENT=25 PIPELINE_STEP=8 ${COMPOSE_CMD} run --rm fiji
 

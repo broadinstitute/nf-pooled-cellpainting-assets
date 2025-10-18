@@ -44,23 +44,22 @@ COMPOSE_CMD=docker-compose  # or: COMPOSE_CMD=podman-compose
 # 1. Clone plugins
 git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
 
-# 2. Get test data including samplesheet
+# 2. Get test data (images + reference files)
 # Choose your fixture: fix-s1 (standard), fix-l1 (large)
 FIXTURE=fix-s1
 aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ data/ --no-sign-request
 
-# 3. Filter LoadData CSVs to match the wells you want to process
-# CRITICAL: The wells specified here MUST match those in run_pcpip.sh WELLS array
-# Mismatch will cause pipeline failures or incorrect results!
+# 3. Generate samplesheet from images (overwrites reference samplesheet from S3)
+# Use --wells to filter to specific wells at generation time
 # Options: --wells "A1" for single well, or --wells "A1,A2,B1" for multiple wells
-uv run scripts/load_data_filter.py --wells "A1"
+uv run scripts/samplesheet_generate.py data/Source1/images/Batch1/images \
+  --output data/Source1/workspace/samplesheets/samplesheet1.csv \
+  --batch Batch1 \
+  --wells "A1"
 
 # 4. Generate LoadData CSVs from samplesheet
-# This script creates LoadData CSVs programmatically from your samplesheet metadata
-# The validation step builds confidence that generated CSVs are correct
-# Going forward, we rely on the generator rather than manual CSV editing
-# NOTE: Your samplesheet must already contain only the wells you filtered above (e.g., only A1)
-uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv --validate
+# This creates the CSVs that CellProfiler pipelines will use
+uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv
 
 # 5. (Optional) Crop images for faster processing
 # Overwrites originals - re-download from S3 to restore
@@ -176,15 +175,17 @@ pcpip/
 ├── plugins/                               # CellProfiler plugins (cloned separately)
 ├── scripts/                               # Processing scripts and utilities
 │   ├── run_pcpip.sh                       # Main pipeline orchestration script
+│   ├── samplesheet_generate.py            # Generate samplesheet from raw images
 │   ├── load_data_generate.py              # Generate LoadData CSVs from samplesheet
-│   ├── load_data_filter.py                # Filter LoadData CSVs to specific wells
-│   ├── load_data_check.py                 # Validate LoadData CSV file paths exist
-│   ├── load_data_transform_p3.py          # Transform pipeline 3 CSVs (segmentation QC)
-│   ├── load_data_transform_p7.py          # Transform pipeline 7 CSVs (plate nesting)
-│   ├── load_data_transform_p9.py          # Transform pipeline 9 CSVs (cropped tiles)
 │   ├── stitch_crop.py                     # ImageJ/Fiji stitching and cropping
 │   ├── crop_preprocess.py                 # Crop images for faster testing
-│   └── montage.py                         # QC visualization montages
+│   ├── montage.py                         # QC visualization montages
+│   └── archive/                           # Legacy scripts for reference CSV maintenance
+│       ├── load_data_filter.py            # Filter LoadData CSVs (superseded by samplesheet_generate.py --wells)
+│       ├── load_data_check.py             # Validate LoadData CSV file paths exist
+│       ├── load_data_transform_p3.py      # Transform pipeline 3 CSVs
+│       ├── load_data_transform_p7.py      # Transform pipeline 7 CSVs
+│       └── load_data_transform_p9.py      # Transform pipeline 9 CSVs
 ├── data/                                  # Unified data directory
 │   └── Source1/images/Batch1/
 │       ├── illum/                         # Illumination correction functions
@@ -263,60 +264,27 @@ ${COMPOSE_CMD} run --rm \
 
 ### Maintainer Notes
 
-#### Utility Scripts
+#### Validating Generated CSVs
 
-##### 1. CSV Transformation Scripts (Modify Load Data CSVs)
-
-These scripts update the load_data CSV files to match the pipeline's output folder structure. After running these transformations, sync the updated files back to S3.
+Reference LoadData CSVs exist in S3 fixtures as validation artifacts. These can be used to verify that generated CSVs are correct:
 
 ```bash
-# Set your base directory
-BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+# Download fixture with reference CSVs
+FIXTURE=fix-s1
+aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ data/ --no-sign-request
 
-# Function to safely run Python transformations in-place
-transform_csv() {
-    local pipeline_num=$1
-    uv run scripts/load_data_transform_p${pipeline_num}.py \
-        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.csv \
-        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp
-    mv ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp \
-        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.csv
-}
+# Generate samplesheet and LoadData CSVs as usual
+uv run scripts/samplesheet_generate.py data/Source1/images/Batch1/images \
+  --output data/Source1/workspace/samplesheets/samplesheet1.csv \
+  --wells "A1"
 
-# Step 1: Apply sed to ALL original CSVs to create _revised versions
-for csv in ${BASE_DIR}/load_data_pipeline*.csv; do
-    if [[ ! "$csv" =~ _revised\.csv$ ]]; then
-        sed 's,Source1/Batch1,Source1/images/Batch1,g' "$csv" > "${csv%.csv}_revised.csv"
-    fi
-done
+# Validate generated CSVs against reference CSVs
+uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv --validate
 
-# Step 2: Run Python transformations in-place on the _revised files
-transform_csv 3
-transform_csv 7
-transform_csv 9
-
-# Sync updated CSVs back to S3
-aws s3 sync data/Source1/workspace/load_data_csv/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/Source1/workspace/load_data_csv/ \
-  --exclude "*" \
-  --include "*_revised.csv"
+# The --validate flag compares generated CSVs against reference files and reports matches/differences
 ```
 
-##### 2. Validation Scripts (Check Files and Data)
-
-These scripts validate that files exist and data is correctly structured. They're read-only and don't modify any files.
-
-```bash
-# Validate files exist for input to Pipeline 9 (check for Well A1)
-# Run this after running Pipelines 1-8 to verify outputs before Pipeline 9
-BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
-duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_revised.csv') WHERE Metadata_Well = 'A1') TO '/tmp/load_data_pipeline9_revised_A1.csv' (FORMAT CSV, HEADER);"
-uv run scripts/load_data_check.py /tmp/load_data_pipeline9_revised_A1.csv
-# Expected output: Total: 64, Found: 64, Missing: 0
-
-# Check any CSV for file existence
-uv run scripts/load_data_check.py ${BASE_DIR}/load_data_pipeline3_revised.csv
-uv run scripts/load_data_check.py ${BASE_DIR}/load_data_pipeline7_revised.csv
-```
+**Note**: Reference CSVs are validation artifacts, not used by the pipeline itself. The pipeline always uses freshly generated CSVs.
 
 #### Creating and Uploading Cropped Input Datasets
 
@@ -418,3 +386,62 @@ pixi exec --spec rclone -- rclone check \
 - Uses rclone's on-the-fly S3 config (`:s3,provider=AWS,region=us-east-1:`) for public bucket access
 - Excludes CellProfiler experiment CSVs which contain timestamps/metadata that vary between runs
 - The `--skip-links` flag ignores symbolic links
+
+---
+
+### Legacy: Reference CSV Maintenance
+
+**Note**: This section documents legacy workflows for maintaining reference LoadData CSVs in S3 fixtures. These are only needed when updating S3 reference artifacts. Standard pipeline workflows do not use these scripts.
+
+#### CSV Transformation Scripts
+
+These scripts update the load_data CSV files to match the pipeline's output folder structure. After running these transformations, sync the updated files back to S3.
+
+```bash
+# Set your base directory
+BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+
+# Function to safely run Python transformations in-place
+transform_csv() {
+    local pipeline_num=$1
+    uv run scripts/archive/load_data_transform_p${pipeline_num}.py \
+        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.csv \
+        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp
+    mv ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp \
+        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.csv
+}
+
+# Step 1: Apply sed to ALL original CSVs to create _revised versions
+for csv in ${BASE_DIR}/load_data_pipeline*.csv; do
+    if [[ ! "$csv" =~ _revised\.csv$ ]]; then
+        sed 's,Source1/Batch1,Source1/images/Batch1,g' "$csv" > "${csv%.csv}_revised.csv"
+    fi
+done
+
+# Step 2: Run Python transformations in-place on the _revised files
+transform_csv 3
+transform_csv 7
+transform_csv 9
+
+# Sync updated CSVs back to S3
+aws s3 sync data/Source1/workspace/load_data_csv/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/Source1/workspace/load_data_csv/ \
+  --exclude "*" \
+  --include "*_revised.csv"
+```
+
+#### File Existence Validation Scripts
+
+These scripts validate that files referenced in LoadData CSVs exist. Read-only, doesn't modify files.
+
+```bash
+# Validate files exist for input to Pipeline 9 (check for Well A1)
+# Run this after running Pipelines 1-8 to verify outputs before Pipeline 9
+BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
+duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_revised.csv') WHERE Metadata_Well = 'A1') TO '/tmp/load_data_pipeline9_revised_A1.csv' (FORMAT CSV, HEADER);"
+uv run scripts/archive/load_data_check.py /tmp/load_data_pipeline9_revised_A1.csv
+# Expected output: Total: 64, Found: 64, Missing: 0
+
+# Check any CSV for file existence
+uv run scripts/archive/load_data_check.py ${BASE_DIR}/load_data_pipeline3_revised.csv
+uv run scripts/archive/load_data_check.py ${BASE_DIR}/load_data_pipeline7_revised.csv
+```

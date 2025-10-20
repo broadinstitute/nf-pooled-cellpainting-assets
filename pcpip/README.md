@@ -93,10 +93,20 @@ CROP_PERCENT=25 PIPELINE_STEP=8 ${COMPOSE_CMD} run --rm fiji
 PIPELINE_STEP=9 ${COMPOSE_CMD} run --rm cellprofiler
 ```
 
-<details>
-<summary>Pipeline Details</summary>
+### Pipeline Details
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#445566",          // mid-tone fill
+    "primaryBorderColor": "#6b849e",    // slightly brighter border
+    "lineColor": "#8a9bab",             // mid-contrast connectors
+    "clusterBkg": "#3e4a55",            // slightly darker for groups
+    "clusterBorder": "#7a8c9e",         // border contrast
+    "edgeLabelBackground": "#3e4a55"    // avoid white chips
+  }
+}}%%
 flowchart TD
     %% Main pipelines with detailed descriptions
     subgraph "Cell Painting Track"
@@ -162,16 +172,15 @@ flowchart TD
     Visual inspection"]
 
     %% Processing platforms
-    classDef cellprofiler fill:#e6f3ff,stroke:#0066cc
-    classDef fiji fill:#e6ffe6,stroke:#009900
-    classDef qc fill:#fff2e6,stroke:#ff8c1a
+    classDef cellprofiler fill:#4b5f7a,stroke:#7fa7d9
+    classDef fiji         fill:#4a6a55,stroke:#7fc9a6
+    classDef qc           fill:#6b5133,stroke:#d9a97f
 
     class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP7A,PCP8Y,PCP9,PCP6A cellprofiler
     class PCP4,PCP8,PCP8Z fiji
     class QC1,QC3,QC5 qc
 ```
 
-</details>
 
 ## Reference
 

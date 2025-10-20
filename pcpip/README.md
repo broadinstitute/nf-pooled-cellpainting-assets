@@ -135,22 +135,6 @@ flowchart TD
         Call barcodes
         Measure QC"]
 
-    %% Troubleshooting/specialized pipelines
-    PCP8Y["PCP-8Y-BC-CheckAlignmentPostStitch
-    Validate alignment b/w
-    stitched CP & BC images"] -.-> PCP8
-    PCP8Z["PCP-8Z-StitchAlignedBarcoding
-    Stitch aligned images
-    (not corrected images)"] -.-> PCP8
-
-    PCP7A["PCP-7A-BC-PreprocessTroubleshoot
-    Specialized version with
-    additional diagnostics"] -.-> PCP7
-
-    PCP6A["PCP-6A-BC-ApplyIllum-DebrisMask
-    Alternative version that
-    identifies & masks debris"] -.-> PCP6
-
     PCP1 -.-> QC1["QC: Illum Montage
     Visual inspection"]
 

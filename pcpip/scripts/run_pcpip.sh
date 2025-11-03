@@ -173,13 +173,23 @@ declare -A QC_CONFIG=(
   [5_qc_illum,log]="5_qc_illum_PLATE"
   [5_qc_illum,extra_args]="--pattern \".*Cycle.*\.npy$\""  # Regex: .npy files containing 'Cycle'
 
-  # QC after Pipeline 4 - Cell Painting Stitching
-  # NOTE: Stitching QC visualization removed - needs clearer requirements
-  # Original intent was to check quadrant alignment for round wells,
-  # but current implementation only does square wells with single stitched output
+  # QC after Pipeline 4 - Cell Painting Stitching (10X preview images)
+  [4_qc_stitch,script]="montage.py"
+  [4_qc_stitch,input]="images_corrected_stitched_10X/painting/PLATE"
+  [4_qc_stitch,output]="../../workspace/qc_reports/4_stitching_cp/PLATE"
+  [4_qc_stitch,output_type]="file"
+  [4_qc_stitch,output_name]="montage.png"
+  [4_qc_stitch,log]="4_qc_stitch_PLATE"
+  [4_qc_stitch,extra_args]="--pattern \"Stitched_CorrDNA\.tiff$\""  # DNA channel only
 
-  # QC after Pipeline 8 - Barcoding Stitching
-  # NOTE: Stitching QC visualization removed - needs clearer requirements
+  # QC after Pipeline 8 - Barcoding Stitching (10X preview images)
+  [8_qc_stitch,script]="montage.py"
+  [8_qc_stitch,input]="images_corrected_stitched_10X/barcoding/PLATE"
+  [8_qc_stitch,output]="../../workspace/qc_reports/8_stitching_bc/PLATE"
+  [8_qc_stitch,output_type]="file"
+  [8_qc_stitch,output_name]="montage.png"
+  [8_qc_stitch,log]="8_qc_stitch_PLATE"
+  [8_qc_stitch,extra_args]="--pattern \"Stitched_Cycle01_DNA\.tiff$\""  # Cycle 1 DNA only
 )
 
 
@@ -439,11 +449,11 @@ if should_run_step 4; then
 fi
 
 # 4_qc_stitch - QC for Cell Painting stitching
-# NOTE: Disabled - needs clearer requirements for stitching QC
-# if should_run_step 4_qc_stitch; then
-#   echo "Running QC for Pipeline 4: Stitching Visualization"
-#   run_qc_check "4_qc_stitch"
-# fi
+if should_run_step 4_qc_stitch; then
+  echo "Running QC for Pipeline 4: Stitching Montage"
+  run_qc_check "4_qc_stitch"
+fi
+wait
 
 # 5_BC_Illum - PLATE, CYCLE
 if should_run_step 5; then
@@ -494,11 +504,11 @@ if should_run_step 8; then
 fi
 
 # 8_qc_stitch - QC for Barcoding stitching
-# NOTE: Disabled - needs clearer requirements for stitching QC
-# if should_run_step 8_qc_stitch; then
-#   echo "Running QC for Pipeline 8: Stitching Visualization"
-#   run_qc_check "8_qc_stitch"
-# fi
+if should_run_step 8_qc_stitch; then
+  echo "Running QC for Pipeline 8: Stitching Montage"
+  run_qc_check "8_qc_stitch"
+fi
+wait
 
 # 9_Analysis - PLATE, WELL, SITE
 if should_run_step 9; then

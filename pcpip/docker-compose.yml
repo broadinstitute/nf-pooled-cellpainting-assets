@@ -15,11 +15,9 @@ services:
       - DISPLAY=
       - JAVA_HOME=/opt/conda
       - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
+      - JAVA_OPTS=-Xmx2G
       - PIPELINE_STEP=${PIPELINE_STEP}
       - CROP_PERCENT=${CROP_PERCENT}
-      - JAVA_OPTS=-Xmx2G
-      - JAVA_HOME=/opt/conda
-      - LD_LIBRARY_PATH=/opt/conda/lib/jvm/lib/server:/opt/conda/lib
     stdin_open: true
     tty: true
 

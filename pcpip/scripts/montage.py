@@ -8,6 +8,16 @@ Design philosophy:
 - Use PIL for proper image handling
 - Keep the interface minimal and intuitive
 
+IMPORTANT - Naming Convention Dependencies:
+This script relies on specific file and directory naming patterns from the PCPIP pipeline.
+If the pipeline's naming conventions change, update the PATTERN_* constants below.
+
+Current patterns (as of 2025):
+- Stitched images: {PlateName}-{WellID}/Stitched_Corr{Channel}.tiff (Cell Painting)
+                   {PlateName}-{WellID}/Stitched_Cycle##_{Channel}.tiff (Barcoding)
+- Illumination:    Plate#_Illum{Channel}.npy or Plate#_IllumCycle##_{Channel}.npy
+- Segmentation:    Plate_{Plate}_Well_{Well}_Site_{Site}_{Channel}_SegmentCheck.png
+
 Usage:
     # Direct execution (requires numpy and pillow installed):
     ./montage.py input_dir output.png --pattern ".*\\.npy$"
@@ -37,6 +47,43 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 
+# =============================================================================
+# NAMING PATTERN CONSTANTS
+# =============================================================================
+# These regex patterns are tied to PCPIP pipeline naming conventions.
+# If file/directory naming changes, update these constants.
+
+# Well identification (from parent directory name)
+# Matches: "Plate1-A1" -> extracts "A1"
+PATTERN_WELL_DIR = r"-([A-Z]\d+)$"
+
+# Channel extraction from stitched Cell Painting images
+# Matches: "Stitched_CorrDNA.tiff" -> extracts "DNA"
+PATTERN_STITCH_CP_CHANNEL = r"Stitched_Corr([A-Za-z0-9]+)"
+
+# Channel extraction from stitched Barcoding images
+# Matches: "Stitched_Cycle01_DNA.tiff" -> extracts "DNA"
+PATTERN_STITCH_BC_CHANNEL = r"Stitched_Cycle\d+_([A-Za-z0-9]+)"
+
+# Cycle identification in barcoding files
+# Matches: "Cycle01" -> extracts "01"
+PATTERN_CYCLE = r"Cycle(\d+)"
+
+# Channel extraction from illumination correction files
+# Matches: "Plate1_IllumDNA.npy" -> extracts "DNA"
+PATTERN_ILLUM_CHANNEL = r"Illum([A-Za-z0-9]+)"
+
+# Site identification in filenames
+# Matches: "Site_1" or "Site1" -> extracts "1"
+PATTERN_SITE = r"Site[_\s]?(\d+)"
+
+# Label patterns (used for parsing derived labels, not raw filenames)
+# Cycle-channel label format: "Cycle01_DNA" -> extracts cycle and channel
+PATTERN_LABEL_CYCLE_CHANNEL = r"Cycle(\d+)_(.+)"
+# Cycle number from label: "Cycle01" -> extracts "01"
+PATTERN_LABEL_CYCLE = r"Cycle(\d+)"
+
+
 def natural_sort_key(s: str) -> List:
     """Natural sorting key that handles numbers properly."""
     return [
@@ -45,13 +92,34 @@ def natural_sort_key(s: str) -> List:
     ]
 
 
-def load_image(file_path: Path, apply_sqrt: bool = False) -> Image.Image:
+def normalize_array(arr: np.ndarray, percentile_clip: bool = True) -> np.ndarray:
+    """
+    Normalize array to 0-255 range.
+
+    Args:
+        arr: Input array
+        percentile_clip: If True, clip to 1st-99th percentile before normalizing
+                        (helps with dim images that have few bright pixels)
+    """
+    if percentile_clip:
+        # Use percentile clipping for better contrast on dim images
+        vmin = np.percentile(arr, 1)
+        vmax = np.percentile(arr, 99)
+        arr = np.clip(arr, vmin, vmax)
+
+    if arr.max() > arr.min():
+        arr = (arr - arr.min()) / (arr.max() - arr.min())
+    return (arr * 255).astype(np.uint8)
+
+
+def load_image(file_path: Path, apply_sqrt: bool = False, normalize: bool = True) -> Image.Image:
     """
     Load an image file and convert to PIL Image.
 
     Args:
         file_path: Path to the file
         apply_sqrt: Apply sqrt transform (for illumination functions)
+        normalize: Apply intensity normalization (auto-stretch contrast)
 
     Returns:
         PIL Image object
@@ -59,22 +127,29 @@ def load_image(file_path: Path, apply_sqrt: bool = False) -> Image.Image:
     if file_path.suffix == ".npy":
         # Load numpy array
         arr = np.load(file_path)
-
-        # Handle grayscale illumination functions
-        if apply_sqrt:
-            arr = np.sqrt(np.maximum(arr, 0))  # Ensure non-negative before sqrt
-
-        # Normalize to 0-255 range
-        if arr.max() > arr.min():
-            arr = (arr - arr.min()) / (arr.max() - arr.min())
-        arr = (arr * 255).astype(np.uint8)
-
-        # Convert to PIL Image
-        return Image.fromarray(arr)
-
     else:
-        # Load regular image file
-        return Image.open(file_path)
+        # Load regular image file and convert to array
+        img = Image.open(file_path)
+        arr = np.array(img)
+
+    # Apply sqrt transform if requested
+    if apply_sqrt:
+        arr = np.sqrt(np.maximum(arr, 0))
+
+    # Apply normalization if requested
+    if normalize:
+        if len(arr.shape) == 3:
+            # Multi-channel: normalize each channel separately
+            normalized = np.zeros_like(arr)
+            for i in range(arr.shape[2]):
+                normalized[:, :, i] = normalize_array(arr[:, :, i])
+            arr = normalized
+        else:
+            # Grayscale: normalize directly
+            arr = normalize_array(arr)
+
+    # Convert to PIL Image
+    return Image.fromarray(arr)
 
 
 def extract_pattern_groups(files: List[Path]) -> Dict[str, List[Tuple[str, Path]]]:
@@ -88,12 +163,33 @@ def extract_pattern_groups(files: List[Path]) -> Dict[str, List[Tuple[str, Path]
     for file_path in files:
         name = file_path.stem
 
+        # Check for well-based directory structure (e.g., {PlateName}-A1/Stitched_CorrDNA.tiff)
+        # Extract well ID from parent directory name (after last dash)
+        parent_name = file_path.parent.name
+        well_match = re.search(PATTERN_WELL_DIR, parent_name)
+        if well_match:
+            well = well_match.group(1)
+
+            # Also extract channel from filename for label
+            channel = None
+            channel_match = re.search(PATTERN_STITCH_CP_CHANNEL, name)
+            if not channel_match:
+                channel_match = re.search(PATTERN_STITCH_BC_CHANNEL, name)
+            if channel_match:
+                channel = channel_match.group(1)
+                label = f"{well} - {channel}"
+            else:
+                label = well
+
+            patterns.setdefault("well", []).append((label, file_path))
+            continue
+
         # Check for cycle-based patterns (for barcoding)
-        cycle_match = re.search(r"Cycle(\d+)", name)
+        cycle_match = re.search(PATTERN_CYCLE, name)
         if cycle_match:
             cycle = f"Cycle{cycle_match.group(1)}"
             # Extract channel from the rest
-            channel_match = re.search(r"Illum([A-Za-z0-9]+)", name)
+            channel_match = re.search(PATTERN_ILLUM_CHANNEL, name)
             if channel_match:
                 channel = channel_match.group(1)
                 key = f"{cycle}_{channel}"
@@ -101,14 +197,14 @@ def extract_pattern_groups(files: List[Path]) -> Dict[str, List[Tuple[str, Path]
             continue
 
         # Check for illumination patterns (without cycle)
-        illum_match = re.search(r"Illum([A-Za-z0-9]+)", name)
+        illum_match = re.search(PATTERN_ILLUM_CHANNEL, name)
         if illum_match:
             channel = illum_match.group(1)
             patterns.setdefault("channel", []).append((channel, file_path))
             continue
 
         # Check for site-based patterns (segmentation images)
-        site_match = re.search(r"Site[_\s]?(\d+)", name)
+        site_match = re.search(PATTERN_SITE, name)
         if site_match:
             site = f"Site{site_match.group(1)}"
             patterns.setdefault("site", []).append((site, file_path))
@@ -152,7 +248,7 @@ def create_montage(
     grid: Optional[Tuple[int, int]] = None,
     padding: int = 10,
     background_color: tuple = (255, 255, 255),
-    label_height: int = 40,
+    label_height: Optional[int] = None,
 ) -> Image.Image:
     """
     Create a montage from a list of images.
@@ -162,7 +258,7 @@ def create_montage(
         grid: Optional (cols, rows) specification
         padding: Space between images
         background_color: Background color (R, G, B)
-        label_height: Height reserved for labels
+        label_height: Height reserved for labels (auto-calculated if None)
 
     Returns:
         Montage as PIL Image
@@ -181,6 +277,10 @@ def create_montage(
     max_width = max(img.width for _, img in images)
     max_height = max(img.height for _, img in images)
 
+    # Auto-calculate label height based on image size (10-15% of image height)
+    if label_height is None:
+        label_height = max(20, min(40, int(max_height * 0.15)))
+
     # Calculate montage dimensions
     cell_width = max_width + padding * 2
     cell_height = max_height + label_height + padding * 2
@@ -191,14 +291,15 @@ def create_montage(
     montage = Image.new("RGB", (montage_width, montage_height), background_color)
     draw = ImageDraw.Draw(montage)
 
-    # Try to load a font for labels (fallback to default)
+    # Try to load a font for labels (size proportional to label_height)
+    font_size = int(label_height * 0.6)  # 60% of label height
     try:
-        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 24)
+        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size)
     except:
         try:
             # Try a common Linux font path
             font = ImageFont.truetype(
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size
             )
         except:
             font = ImageFont.load_default()
@@ -253,7 +354,7 @@ def organize_cycle_channel_layout(
     # Parse cycle and channel from each item
     parsed = []
     for label, path in items:
-        match = re.match(r"Cycle(\d+)_(.+)", label)
+        match = re.match(PATTERN_LABEL_CYCLE_CHANNEL, label)
         if match:
             cycle = int(match.group(1))
             channel = match.group(2)
@@ -300,7 +401,7 @@ def main(
     import re
 
     regex = re.compile(pattern)
-    all_files = input_dir.iterdir()
+    all_files = input_dir.rglob("*")  # Recursive search
     files = sorted(
         [f for f in all_files if f.is_file() and regex.match(f.name)],
         key=lambda p: natural_sort_key(p.name),
@@ -329,9 +430,9 @@ def main(
         # Calculate grid dimensions
         cycles = len(
             set(
-                re.match(r"Cycle(\d+)", label).group(1)
+                re.match(PATTERN_LABEL_CYCLE, label).group(1)
                 for label, _ in items
-                if re.match(r"Cycle(\d+)", label)
+                if re.match(PATTERN_LABEL_CYCLE, label)
             )
         )
         channels = len(items) // cycles if cycles > 0 else len(items)
@@ -347,6 +448,11 @@ def main(
         if grid is None:
             grid = (len(items), 1)
         print(f"Organizing {len(items)} channels in a row")
+
+    elif "well" in pattern_groups:
+        # Well-based layout (for stitched images)
+        items = sorted(pattern_groups["well"], key=lambda x: natural_sort_key(x[0]))
+        print(f"Organizing {len(items)} wells")
 
     elif "site" in pattern_groups:
         # Site-based layout

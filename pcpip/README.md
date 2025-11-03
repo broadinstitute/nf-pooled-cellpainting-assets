@@ -80,6 +80,7 @@ PIPELINE_STEP=3_qc_seg ${COMPOSE_CMD} run --rm qc
 [ "$COMPOSE_CMD" = "podman-compose" ] && sudo chmod -R 777 data/Source1/images/
 
 CROP_PERCENT=25 PIPELINE_STEP=4 ${COMPOSE_CMD} run --rm fiji
+PIPELINE_STEP=4_qc_stitch ${COMPOSE_CMD} run --rm qc
 
 PIPELINE_STEP=5 ${COMPOSE_CMD} run --rm cellprofiler
 PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
@@ -89,6 +90,7 @@ PIPELINE_STEP="6,7" ${COMPOSE_CMD} run --rm cellprofiler
 [ "$COMPOSE_CMD" = "podman-compose" ] && sudo chmod -R 777 data/Source1/images/
 
 CROP_PERCENT=25 PIPELINE_STEP=8 ${COMPOSE_CMD} run --rm fiji
+PIPELINE_STEP=8_qc_stitch ${COMPOSE_CMD} run --rm qc
 
 PIPELINE_STEP=9 ${COMPOSE_CMD} run --rm cellprofiler
 ```
@@ -108,7 +110,7 @@ flowchart TD
         PCP3["PCP-3-CP-SegmentCheck
         Verify segmentation quality
         on subset of images"]
-        PCP3 --> PCP4["PCP-4-CP-Stitching
+        PCP2 --> PCP4["PCP-4-CP-Stitching
         Stitch FOVs into whole-well
         Crop into tiles"]
     end
@@ -141,7 +143,13 @@ flowchart TD
     PCP3 -.-> QC3["QC: Segmentation Montage
     Visual inspection"]
 
+    PCP4 -.-> QC4["QC: Stitching Montage
+    Visual inspection"]
+
     PCP5 -.-> QC5["QC: Illum Montage
+    Visual inspection"]
+
+    PCP8 -.-> QC8["QC: Stitching Montage
     Visual inspection"]
 
     %% Processing platforms
@@ -151,7 +159,7 @@ flowchart TD
 
     class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP7A,PCP8Y,PCP9,PCP6A cellprofiler
     class PCP4,PCP8,PCP8Z fiji
-    class QC1,QC3,QC5 qc
+    class QC1,QC3,QC4,QC5,QC8 qc
 ```
 
 
@@ -197,7 +205,9 @@ QC currently consists of creating visual montages using the `montage.py` script:
 
 - **1_qc_illum**: Montage of cell painting illumination corrections after Pipeline 1
 - **3_qc_seg**: Montage of segmentation check images after Pipeline 3
+- **4_qc_stitch**: Montage of cell painting stitched whole-well images (10X previews) after Pipeline 4
 - **5_qc_illum**: Montage of barcoding illumination corrections after Pipeline 5
+- **8_qc_stitch**: Montage of barcoding stitched whole-well images (10X previews) after Pipeline 8
 
 #### Running QC Steps
 
@@ -205,14 +215,31 @@ QC currently consists of creating visual montages using the `montage.py` script:
 # Run QC montages via Docker/Podman
 PIPELINE_STEP=1_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=3_qc_seg ${COMPOSE_CMD} run --rm qc
+PIPELINE_STEP=4_qc_stitch ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
+PIPELINE_STEP=8_qc_stitch ${COMPOSE_CMD} run --rm qc
 
 # Run montage script locally with Pixi
+# Example: Illumination QC
 pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
   python scripts/montage.py \
   data/Source1/images/Batch1/illum/Plate1 \
   output_montage.png \
   --pattern ".*\\.npy$"
+
+# Example: Stitching QC for Cell Painting
+pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
+  python scripts/montage.py \
+  data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1 \
+  data/Source1/workspace/qc_reports/4_stitching_cp/Plate1/montage.png \
+  --pattern "Stitched_CorrDNA\\.tiff$"
+
+# Example: Stitching QC for Barcoding
+pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
+  python scripts/montage.py \
+  data/Source1/images/Batch1/images_corrected_stitched_10X/barcoding/Plate1 \
+  data/Source1/workspace/qc_reports/8_stitching_bc/Plate1/montage.png \
+  --pattern "Stitched_Cycle01_DNA\\.tiff$"
 ```
 
 ### Troubleshooting

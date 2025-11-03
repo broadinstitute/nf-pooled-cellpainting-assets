@@ -57,7 +57,10 @@
       "Bash(data/Source1/images/Batch1/images_segmentation/Plate1-A1 )",
       "Bash(/tmp/test_seg.png )",
       "Bash(data/Source1/images/Batch1/images_segmentation/painting/Plate1/Plate1-A1 )",
-      "Bash(/tmp/test_illum_constants.png )"
+      "Bash(/tmp/test_illum_constants.png )",
+      "Read(//Users/shsingh/Documents/GitHub/nf/starrynight/**)",
+      "WebFetch(domain:docs.seqera.io)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": [],

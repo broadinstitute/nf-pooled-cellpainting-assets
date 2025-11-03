@@ -149,6 +149,9 @@ flowchart TD
     PCP5 -.-> QC5["QC: Illum Montage
     Visual inspection"]
 
+    PCP6 -.-> QC6["QC: Alignment Analysis
+    CSV reports"]
+
     PCP8 -.-> QC8["QC: Stitching Montage
     Visual inspection"]
 
@@ -159,15 +162,14 @@ flowchart TD
 
     class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP7A,PCP8Y,PCP9,PCP6A cellprofiler
     class PCP4,PCP8,PCP8Z fiji
-    class QC1,QC3,QC4,QC5,QC8 qc
+    class QC1,QC3,QC4,QC5,QC6,QC8 qc
 ```
-
 
 ## Reference
 
 ### Directory Structure
 
-```
+```text
 pcpip/
 ├── pipelines/                             # CellProfiler pipeline files (.cppipe)
 ├── plugins/                               # CellProfiler plugins (cloned separately)
@@ -201,7 +203,9 @@ The pipeline currently includes visual QC via montage generation at key processi
 
 #### Available QC Steps
 
-QC currently consists of creating visual montages using the `montage.py` script:
+QC includes both visual montages and quantitative analysis:
+
+**Visual QC (Montages)**:
 
 - **1_qc_illum**: Montage of cell painting illumination corrections after Pipeline 1
 - **3_qc_seg**: Montage of segmentation check images after Pipeline 3
@@ -209,15 +213,22 @@ QC currently consists of creating visual montages using the `montage.py` script:
 - **5_qc_illum**: Montage of barcoding illumination corrections after Pipeline 5
 - **8_qc_stitch**: Montage of barcoding stitched whole-well images (10X previews) after Pipeline 8
 
+**Quantitative QC (CSV Reports)**:
+
+- **6_qc_align**: Barcode alignment analysis after Pipeline 6 - generates CSV reports on pixel shifts and correlation scores between barcoding cycles
+
 #### Running QC Steps
 
 ```bash
-# Run QC montages via Docker/Podman
+# Run visual QC montages via Docker/Podman
 PIPELINE_STEP=1_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=3_qc_seg ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=4_qc_stitch ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=8_qc_stitch ${COMPOSE_CMD} run --rm qc
+
+# Run quantitative QC analysis via Docker/Podman
+PIPELINE_STEP=6_qc_align ${COMPOSE_CMD} run --rm qc
 
 # Run montage script locally with Pixi
 # Example: Illumination QC
@@ -240,6 +251,15 @@ pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.
   data/Source1/images/Batch1/images_corrected_stitched_10X/barcoding/Plate1 \
   data/Source1/workspace/qc_reports/8_stitching_bc/Plate1/montage.png \
   --pattern "Stitched_Cycle01_DNA\\.tiff$"
+
+# Example: Alignment QC
+pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 -- \
+  python scripts/qc_barcode_align.py \
+  data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
+  data/Source1/workspace/qc_reports/6_alignment/Plate1 \
+  --numcycles 3 \
+  --shift-threshold 50 \
+  --corr-threshold 0.9
 ```
 
 ### Troubleshooting

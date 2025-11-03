@@ -182,6 +182,14 @@ declare -A QC_CONFIG=(
   [4_qc_stitch,log]="4_qc_stitch_PLATE"
   [4_qc_stitch,extra_args]="--pattern \"Stitched_CorrDNA\.tiff$\""  # DNA channel only
 
+  # QC after Pipeline 6 - Barcoding Alignment Analysis
+  [6_qc_align,script]="qc_barcode_align.py"
+  [6_qc_align,input]="images_aligned/barcoding/PLATE"
+  [6_qc_align,output]="../../workspace/qc_reports/6_alignment/PLATE"
+  [6_qc_align,output_type]="dir"  # Outputs multiple CSV files
+  [6_qc_align,log]="6_qc_align_PLATE"
+  [6_qc_align,extra_args]="--numcycles 3 --shift-threshold 50 --corr-threshold 0.9"
+
   # QC after Pipeline 8 - Barcoding Stitching (10X preview images)
   [8_qc_stitch,script]="montage.py"
   [8_qc_stitch,input]="images_corrected_stitched_10X/barcoding/PLATE"
@@ -341,9 +349,7 @@ run_qc_check() {
   # Create output directory if needed
   mkdir -p "${output_dir}"
 
-  # Build command - using the executable script directly (it has pixi shebang)
-  # Montage.py now extracts identifier from input directory name
-  # New montage.py doesn't need type argument - it auto-detects from patterns
+  # Build command - scripts have shebang and execute permissions
   local cmd="/app/scripts/${script} \"${input_dir}\" \"${output_path}\""
   if [[ -n "$extra_args" ]]; then
     cmd+=" ${extra_args}"
@@ -482,6 +488,13 @@ if should_run_step 6; then
   done
   wait
 fi
+
+# 6_qc_align - QC for Barcoding alignment
+if should_run_step 6_qc_align; then
+  echo "Running QC for Pipeline 6: Alignment Analysis"
+  run_qc_check "6_qc_align"
+fi
+wait
 
 # 7_BC_Preprocess - PLATE, WELL, SITE
 if should_run_step 7; then

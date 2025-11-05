@@ -39,7 +39,8 @@ Multiple test datasets are available in S3. Choose the fixture that matches your
 cd pcpip/
 
 # 0. Set compose command (use podman-compose on Linux/Podman, docker-compose elsewhere)
-COMPOSE_CMD=docker-compose  # or: COMPOSE_CMD=podman-compose
+COMPOSE_CMD=docker-compose  
+# COMPOSE_CMD=podman-compose
 
 # 1. Clone plugins
 git clone https://github.com/CellProfiler/CellProfiler-plugins.git plugins/
@@ -181,11 +182,6 @@ pcpip/
 │   ├── crop_preprocess.py                 # Crop images for faster testing
 │   ├── montage.py                         # QC visualization montages
 │   └── archive/                           # Legacy scripts for reference CSV maintenance
-│       ├── load_data_filter.py            # Filter LoadData CSVs (superseded by samplesheet_generate.py --wells)
-│       ├── load_data_check.py             # Validate LoadData CSV file paths exist
-│       ├── load_data_transform_p3.py      # Transform pipeline 3 CSVs
-│       ├── load_data_transform_p7.py      # Transform pipeline 7 CSVs
-│       └── load_data_transform_p9.py      # Transform pipeline 9 CSVs
 ├── data/                                  # Unified data directory
 │   └── Source1/images/Batch1/
 │       ├── illum/                         # Illumination correction functions
@@ -365,7 +361,8 @@ To share pipeline outputs for reproducibility:
 
 ```bash
 # Set your fixture and AWS profile
-export FIXTURE=fix-s1  # or fix-l1
+export FIXTURE=fix-s1  
+# export FIXTURE=fix-l1
 export AWS_PROFILE=your-profile-name  # Or configure AWS credentials as appropriate
 
 # Step 1: Upload data (excluding logs)
@@ -395,7 +392,9 @@ To verify local pipeline outputs match the reference outputs on S3:
 
 ```bash
 # Set your fixture
-FIXTURE=fix-s1  # or fix-l1
+export FIXTURE=fix-s1
+# export FIXTURE=fix-l1
+
 
 # Compare Batch1 outputs (excluding temporary files and CellProfiler CSVs)
 pixi exec --spec rclone -- rclone check \

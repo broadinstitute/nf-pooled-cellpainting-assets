@@ -510,23 +510,42 @@ if os.path.isdir(subdir):
                 # Extract the prefix and suffix (channel name)
                 thisprefix, thissuffix = eachpresuf
 
-                # Clean up the suffix to use as a directory name
+                # Clean up the suffix to use as channel name
                 thissuffixnicename = thissuffix.split(".")[0]
                 if thissuffixnicename[0] == "_":
                     thissuffixnicename = thissuffixnicename[1:]
 
-                # Create a channel-specific subdirectory for tile outputs within the well directory
-                tile_subdir_persuf = os.path.join(well_tile_subdir, thissuffixnicename)
-                if not os.path.exists(tile_subdir_persuf):
-                    os.mkdir(tile_subdir_persuf)
+                # No longer creating channel subdirectory - tiles go directly in well directory
+                # This matches the agreed-upon naming convention from the team discussion
 
                 # Set up the filename pattern for input images
                 # The {i} will be replaced with site numbers (1, 2, 3, 4...)
                 filename = thisprefix + "_Well_" + eachwell + "_Site_{i}_" + thissuffix
 
                 # Set up the output filename for the stitched image
-                # Always use the "Stitched_" prefix for all track types
-                fileoutname = "Stitched_" + thissuffixnicename + ".tiff"
+                # NOTE: Naming convention differs between stitched and cropped outputs:
+                #
+                # STITCHED (whole-well images):
+                #   - Compact format: Plate1-A1-CorrCHN2-Stitched.tiff
+                #   - Uses hyphens, no Plate_/Well_ keywords
+                #   - No site info (whole well)
+                #
+                # CROPPED (tiled images):
+                #   - Explicit format: Plate_Plate1_Well_A1_Site_1_CorrCHN2.tiff
+                #   - Uses underscores with Plate_/Well_/Site_ keywords
+                #   - Matches images_corrected input naming convention
+                #
+                # This difference is intentional (per team discussion Nov 2025):
+                # - Stitched images are simpler (no sites) so compact format suffices
+                # - Cropped images need explicit format to match upstream naming
+                #
+                # To use explicit format for stitched images (if needed):
+                # fileoutname = "Plate_{}_Well_{}_{}_Stitched.tiff".format(
+                #     plate_id, eachwell, thissuffixnicename
+                # )
+                fileoutname = "{}-{}-{}-Stitched.tiff".format(
+                    plate_id, eachwell, thissuffixnicename
+                )
 
                 # STEP 7: Run the ImageJ stitching operation for this channel and well
                 IJ.run(
@@ -637,15 +656,13 @@ if os.path.isdir(subdir):
                         im_tile = im.crop()
 
                         # Save the cropped tile
+                        # Format: Plate_Plate1_Well_A1_Site_1_CorrCHN2.tiff
+                        tile_filename = "Plate_{}_Well_{}_Site_{}_{}.tiff".format(
+                            plate_id, eachwell, each_tile_num, thissuffixnicename
+                        )
                         savefile(
                             im_tile,
-                            os.path.join(
-                                tile_subdir_persuf,
-                                thissuffixnicename
-                                + "_Site_"
-                                + str(each_tile_num)
-                                + ".tiff",
-                            ),
+                            os.path.join(well_tile_subdir, tile_filename),
                             plugin,
                             compress=compress,
                         )

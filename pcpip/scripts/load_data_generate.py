@@ -343,26 +343,32 @@ def pipeline9(samplesheet_df, base_path=None, tiles_per_well=None):
             for cycle in [1, 2, 3]:
                 for ch in channels_bc:
                     col = f"Cycle{cycle:02d}_{ch}"
-                    path = f"{base_path}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/{col}/"  # Add trailing slash
+                    # No channel subdirectory - files are flat in well directory
+                    path = f"{base_path}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/"
                     data[f"PathName_{col}"] = path
+                    # New explicit naming: Plate_Plate1_Well_A1_Site_1_Cycle01_A.tiff
                     data[f"FileName_{col}"] = (
-                        f"{col}_Site_{tile}.tiff"  # Use Site naming
+                        f"Plate_{plate}_Well_{well}_Site_{tile}_{col}.tiff"
                     )
 
             # Add Cycle01_DNA separately (special case for pipeline 9)
+            # No channel subdirectory - files are flat in well directory
             data["PathName_Cycle01_DNA"] = (
-                f"{base_path}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/Cycle01_DNA/"
+                f"{base_path}/images_corrected_cropped/barcoding/{plate}/{plate}-{well}/"
             )
+            # New explicit naming: Plate_Plate1_Well_A1_Site_1_Cycle01_DNA.tiff
             data["FileName_Cycle01_DNA"] = (
-                f"Cycle01_DNA_Site_{tile}.tiff"  # Use Site naming
+                f"Plate_{plate}_Well_{well}_Site_{tile}_Cycle01_DNA.tiff"
             )
 
             # Cell Painting channels (with Corr prefix)
             for ch in channels_cp:
-                path = f"{base_path}/images_corrected_cropped/painting/{plate}/{plate}-{well}/Corr{ch}/"  # Add Corr to path too!
+                # No channel subdirectory - files are flat in well directory
+                path = f"{base_path}/images_corrected_cropped/painting/{plate}/{plate}-{well}/"
                 data[f"PathName_Corr{ch}"] = path
+                # New explicit naming: Plate_Plate1_Well_A1_Site_1_CorrDNA.tiff
                 data[f"FileName_Corr{ch}"] = (
-                    f"Corr{ch}_Site_{tile}.tiff"  # Use Site naming
+                    f"Plate_{plate}_Well_{well}_Site_{tile}_Corr{ch}.tiff"
                 )
 
             rows.append(data)

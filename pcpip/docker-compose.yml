@@ -82,9 +82,9 @@ services:
     profiles:
       - interactive
 
-  # QC service with pandas, numpy, and pillow for analysis and visualization
+  # QC service with pandas, numpy, pillow, and seaborn for analysis and visualization
   qc:
-    image: community.wave.seqera.io/library/pandas_python_pip_pillow:e79a7113bfa36b11
+    image: community.wave.seqera.io/library/pandas_python_seaborn_pip_pillow:b33d9856d0bde036
     platform: linux/amd64
     container_name: pcpip-qc
     volumes:
@@ -96,11 +96,12 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PIPELINE_STEP=${PIPELINE_STEP}
+      - PLOT_QC=${PLOT_QC:-false}
     stdin_open: true
     tty: true
 
   qc-shell:
-    image: community.wave.seqera.io/library/pandas_python_pip_pillow:e79a7113bfa36b11
+    image: community.wave.seqera.io/library/pandas_python_seaborn_pip_pillow:b33d9856d0bde036
     platform: linux/amd64
     container_name: pcpip-qc-shell
     volumes:

@@ -8,26 +8,28 @@ downstream analysis and visualization.
 
 Design philosophy:
 - CSV-first approach: Generate greppable, queryable data files
-- No plotting dependencies (plots can be added in iteration 2)
+- Generate visualizations from the CSVs
 - Clear separation of data extraction and visualization
 - Summary statistics printed to stdout for quick assessment
 
 Usage:
-    # Direct execution with pixi:
-    pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.2.3 --spec numpy=2.3.3 -- \
-        python qc_barcode_align.py \
+
+    python qc_barcode_align.py \
         data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
         data/Source1/workspace/qc_reports/6_alignment/Plate1 \
-        --numcycles 3 \
-        --shift-threshold 50 \
-        --corr-threshold 0.9
+        --numcycles 3
 
-    # Via Docker (recommended):
-    PIPELINE_STEP=6_qc_align docker-compose run --rm qc
+    # spatial analysis (square acquisition):
+    python qc_barcode_align.py input/ output/ --numcycles 3 \
+        --rows 32 --columns 32
+
+    # spatial analysis (circular acquisition):
+    python qc_barcode_align.py input/ output/ --numcycles 3 \
+        --row-widths "5,11,17,19,23,25,27,29,29,31,33,33,33,35,35,35,37,37,37,37,37,35,35,35,33,33,33,31,29,29,27,25,23,19,17,11,5"
 
 Input:
     - BarcodingApplication_Image.csv from Pipeline 6 (barcoding illumination application)
-    - Located in: data/Source1/images/Batch1/images_aligned/barcoding/Plate1/{Well-Site}/
+    - Located in: SOURCE/images/BATCH/images_aligned/barcoding/PLATE/{Well-Site}/
 
 Output CSVs (written to qc_reports/6_alignment/{Plate}/):
 
@@ -60,6 +62,30 @@ Output CSVs (written to qc_reports/6_alignment/{Plate}/):
        - issue_type: "large_shift" or "poor_correlation"
        - Use for: Immediate attention to problematic sites
        - Rows: Variable (one per flagged issue)
+
+Output Plots:
+
+    1. alignment_shifts_catplot.png
+       - Horizontal catplot showing pixel shift distributions
+       - Faceted by Plate (rows) and Well (columns)
+       - X-axis limited to (-200, 200) pixels
+       - Shows all X and Y shifts for each cycle vs Cycle 1
+
+    2. alignment_correlations_all.png
+       - Catplot of all pairwise cycle correlations
+       - Red reference line at correlation threshold (default 0.9)
+       - Faceted by Plate (rows) and Well (columns)
+
+    3. alignment_correlations_cycle01.png
+       - Catplot of correlations to Cycle 1 only (primary QC)
+       - Red reference line at correlation threshold
+       - Faceted by Plate (rows) and Well (columns)
+
+    4. alignment_shifts_spatial.png (requires --rows/--columns or --row-widths)
+       - Spatial heatmap showing location of problematic sites
+       - Color-coded by shift magnitude
+       - Shows WHERE in the well alignment issues occur
+       - Useful for identifying edge effects or debris zones
 
 Example Queries:
 
@@ -119,6 +145,12 @@ import sys
 from pathlib import Path
 import pandas as pd
 import numpy as np
+
+import matplotlib
+
+matplotlib.use("Agg")  # Non-interactive backend for Docker/headless environments
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def find_image_csv(input_dir: Path) -> Path:
@@ -334,7 +366,7 @@ def generate_summary(
         df_shifts.groupby(["Metadata_Plate", "Metadata_Well"])
         .agg(
             {
-                "Metadata_Site": "count",  # Total sites
+                "Metadata_Site": "nunique",  # Total unique sites
                 "shift_magnitude": ["max", "mean", "std"],
             }
         )
@@ -351,11 +383,11 @@ def generate_summary(
         "std_shift_magnitude",
     ]
 
-    # Count sites with large shifts
+    # Count unique sites with large shifts
     large_shifts = (
         df_shifts[df_shifts["shift_magnitude"] > shift_threshold]
-        .groupby(["Metadata_Plate", "Metadata_Well"])
-        .size()
+        .groupby(["Metadata_Plate", "Metadata_Well"])["Metadata_Site"]
+        .nunique()
         .reset_index(name=f"sites_shift_gt{int(shift_threshold)}")
     )
 
@@ -383,11 +415,11 @@ def generate_summary(
         "std_correlation",
     ]
 
-    # Count sites with poor correlations
+    # Count unique sites with poor correlations
     poor_corr = (
         df_corr_cycle01[df_corr_cycle01["correlation"] < corr_threshold]
-        .groupby(["Metadata_Plate", "Metadata_Well"])
-        .size()
+        .groupby(["Metadata_Plate", "Metadata_Well"])["Metadata_Site"]
+        .nunique()
         .reset_index(name=f"sites_corr_lt{corr_threshold:.2f}".replace(".", ""))
     )
 
@@ -569,12 +601,343 @@ def print_summary_stats(
     print()
 
 
+def create_position_mapping_square(rows: int, columns: int) -> pd.DataFrame:
+    """
+    Create position mapping for square/rectangular acquisition pattern.
+
+    Args:
+        rows: Number of rows in the grid
+        columns: Number of columns in the grid
+
+    Returns:
+        DataFrame with columns: Metadata_Site, x_loc, y_loc
+    """
+    pos_data = []
+    for site in range(rows * columns):
+        row = site // columns
+        col = site % columns
+        pos_data.append({"Metadata_Site": site, "x_loc": col, "y_loc": row})
+    return pd.DataFrame(pos_data)
+
+
+def create_position_mapping_circular(row_widths: list) -> pd.DataFrame:
+    """
+    Create position mapping for circular acquisition pattern.
+
+    Based on original PCPIP notebook logic where images snake back and forth
+    (even rows go left→right, odd rows go right→left).
+
+    Args:
+        row_widths: List where each element is the number of images in that row
+
+    Returns:
+        DataFrame with columns: Metadata_Site, x_loc, y_loc
+    """
+    max_width = max(row_widths)
+    pos_data = []
+    site_count = 0
+
+    for row_idx, row_width in enumerate(row_widths):
+        left_pos = int((max_width - row_width) / 2)
+
+        for col_idx in range(row_width):
+            if row_idx % 2 == 0:
+                # Even rows: left to right
+                x_pos = int(left_pos + col_idx)
+            else:
+                # Odd rows: right to left (snake pattern)
+                right_pos = left_pos + row_width - 1
+                x_pos = int(right_pos - col_idx)
+
+            pos_data.append(
+                {"Metadata_Site": site_count, "x_loc": x_pos, "y_loc": row_idx}
+            )
+            site_count += 1
+
+    return pd.DataFrame(pos_data)
+
+
+def plot_shifts_catplot(
+    df_shifts: pd.DataFrame, output_path: Path, shift_threshold: float
+):
+    """
+    Create catplot of pixel shifts with limited x-axis.
+
+    Args:
+        df_shifts: Shift data from extract_shifts()
+        output_path: Path to save the plot
+        shift_threshold: Threshold value (for reference)
+    """
+
+    # Prepare data in long format for seaborn
+    id_cols = ["Metadata_Plate", "Metadata_Well", "Metadata_Site", "cycle"]
+    df_melted = pd.melt(
+        df_shifts[id_cols + ["Xshift", "Yshift"]],
+        id_vars=id_cols,
+        var_name="direction",
+        value_name="shift_pixels",
+    )
+
+    # Create variable name like "Cycle02_X" for y-axis
+    df_melted["variable"] = (
+        "Cycle"
+        + df_melted["cycle"].astype(str).str.zfill(2)
+        + "_"
+        + df_melted["direction"]
+    )
+
+    # Create catplot
+    g = sns.catplot(
+        data=df_melted,
+        x="shift_pixels",
+        y="variable",
+        orient="h",
+        col="Metadata_Well",
+        row="Metadata_Plate",
+        height=4,
+        aspect=1.5,
+        kind="strip",
+        s=3,
+        alpha=0.5,
+    )
+
+    g.set(xlim=(-200, 200))
+    g.set_axis_labels("Pixel Shift", "Cycle vs Cycle 1")
+    g.fig.suptitle(
+        f"Pixel Shifts for Alignment (threshold: {shift_threshold}px)", y=1.02
+    )
+
+    plt.tight_layout()
+    g.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
+def plot_correlations_catplot(
+    df_corr: pd.DataFrame,
+    output_path: Path,
+    corr_threshold: float,
+    only_cycle01: bool = False,
+):
+    """
+    Create catplot of correlation scores.
+
+    Args:
+        df_corr: Correlation data from extract_correlations()
+        output_path: Path to save the plot
+        corr_threshold: Threshold value for reference line
+        only_cycle01: If True, only show correlations to Cycle 1
+    """
+
+    # Filter to Cycle01 comparisons if requested
+    plot_data = df_corr.copy()
+    if only_cycle01:
+        plot_data = plot_data[plot_data["cycle1"] == 1].copy()
+        title_suffix = "(Cycle 1 vs Others)"
+    else:
+        title_suffix = "(All Pairwise Comparisons)"
+
+    # Create catplot
+    g = sns.catplot(
+        data=plot_data,
+        x="correlation",
+        y="cycle_pair_label",
+        orient="h",
+        col="Metadata_Well",
+        row="Metadata_Plate",
+        height=4,
+        aspect=1.5,
+        kind="strip",
+        s=3,
+        alpha=0.5,
+    )
+
+    # Add reference line at threshold
+    for ax in g.axes.flat:
+        ax.axvline(
+            x=corr_threshold, color="red", linestyle="--", linewidth=1, alpha=0.7
+        )
+
+    g.set(xlim=(0, 1.0))
+    g.set_axis_labels("Correlation Score", "Cycle Pair")
+    g.fig.suptitle(
+        f"DAPI Correlations After Alignment {title_suffix}\n(threshold: {corr_threshold})",
+        y=1.02,
+    )
+
+    plt.tight_layout()
+    g.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
+def plot_shifts_spatial(
+    df_shifts: pd.DataFrame,
+    pos_df: pd.DataFrame,
+    output_path: Path,
+    shift_threshold: float,
+):
+    """
+    Create spatial heatmap of sites with large shifts.
+
+    Args:
+        df_shifts: Shift data from extract_shifts()
+        pos_df: Position mapping from create_position_mapping_*()
+        output_path: Path to save the plot
+        shift_threshold: Only plot sites with shifts above this threshold
+    """
+
+    # Get sites with shifts greater than threshold
+    flagged_shifts = (
+        df_shifts[df_shifts["shift_magnitude"] > shift_threshold]
+        .groupby(["Metadata_Plate", "Metadata_Well", "Metadata_Site"])
+        .agg({"shift_magnitude": "max"})
+        .reset_index()
+    )
+
+    if len(flagged_shifts) == 0:
+        print(f"  ℹ No sites with shifts >{shift_threshold}px, skipping spatial plot")
+        return
+
+    # Merge with position data
+    plot_data = flagged_shifts.merge(pos_df, on="Metadata_Site", how="inner")
+
+    if len(plot_data) == 0:
+        print(f"  ℹ No sites with shifts >{shift_threshold}px found")
+        return
+
+    # Cap extreme values for color scale (but keep all sites in plot)
+    plot_data["shift_magnitude_capped"] = plot_data["shift_magnitude"].clip(upper=200)
+
+    # Determine number of wells for subplot layout
+    n_wells = plot_data["Metadata_Well"].nunique()
+    if n_wells == 1:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        axes = [ax]
+    else:
+        ncols = min(3, n_wells)
+        nrows = int(np.ceil(n_wells / ncols))
+        fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 6 * nrows))
+        axes = axes.flatten() if n_wells > 1 else [axes]
+
+    # Plot each well
+    for idx, well in enumerate(sorted(plot_data["Metadata_Well"].unique())):
+        if idx >= len(axes):
+            break
+
+        well_data = plot_data[plot_data["Metadata_Well"] == well]
+
+        ax = axes[idx]
+        scatter = ax.scatter(
+            well_data["x_loc"],
+            well_data["y_loc"],
+            c=well_data["shift_magnitude_capped"],
+            cmap="viridis",
+            s=150,
+            marker="s",
+            vmin=shift_threshold,
+            vmax=200,
+            alpha=0.8,
+        )
+
+        ax.set_xlabel("X Position")
+        ax.set_ylabel("Y Position")
+        ax.set_title(f"Well {well}")
+        ax.set_aspect("equal")
+        ax.invert_yaxis()  # Match image coordinates (0,0 at top-left)
+
+        # Add colorbar
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label("Shift Magnitude (pixels)")
+
+    # Hide unused subplots
+    for idx in range(n_wells, len(axes)):
+        axes[idx].set_visible(False)
+
+    # Check if any values exceed 200px for title annotation
+    max_shift = plot_data["shift_magnitude"].max()
+    title = f"Spatial Distribution of Large Shifts (>{shift_threshold}px)"
+    if max_shift > 200:
+        title += (
+            f"\nNote: Color scale capped at 200px (max observed: {max_shift:.0f}px)"
+        )
+
+    fig.suptitle(title, fontsize=14, y=0.995)
+    plt.tight_layout()
+    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
+def generate_plots(
+    df_shifts: pd.DataFrame,
+    df_corr: pd.DataFrame,
+    output_dir: Path,
+    shift_threshold: float,
+    corr_threshold: float,
+    rows: int = None,
+    columns: int = None,
+    row_widths: list = None,
+):
+    """
+    Generate all QC plots.
+
+    Args:
+        df_shifts: Shift data from extract_shifts()
+        df_corr: Correlation data from extract_correlations()
+        output_dir: Directory to save plots
+        shift_threshold: Shift threshold for flagging
+        corr_threshold: Correlation threshold for flagging
+        rows: Number of rows (for square acquisition)
+        columns: Number of columns (for square acquisition)
+        row_widths: Row width array (for circular acquisition)
+    """
+
+    print("\nGenerating QC plots...")
+
+    # 1. Shifts catplot
+    shifts_plot_path = output_dir / "alignment_shifts_catplot.png"
+    print(f"  Creating {shifts_plot_path.name}...")
+    plot_shifts_catplot(df_shifts, shifts_plot_path, shift_threshold)
+
+    # 2. All correlations catplot
+    corr_all_path = output_dir / "alignment_correlations_all.png"
+    print(f"  Creating {corr_all_path.name}...")
+    plot_correlations_catplot(
+        df_corr, corr_all_path, corr_threshold, only_cycle01=False
+    )
+
+    # 3. Cycle01 correlations catplot (primary QC)
+    corr_cycle01_path = output_dir / "alignment_correlations_cycle01.png"
+    print(f"  Creating {corr_cycle01_path.name}...")
+    plot_correlations_catplot(
+        df_corr, corr_cycle01_path, corr_threshold, only_cycle01=True
+    )
+
+    # 4. Spatial heatmap (if geometry provided)
+    if rows is not None and columns is not None:
+        print(f"  Creating spatial plot (square: {rows}x{columns})...")
+        pos_df = create_position_mapping_square(rows, columns)
+        spatial_plot_path = output_dir / "alignment_shifts_spatial.png"
+        plot_shifts_spatial(df_shifts, pos_df, spatial_plot_path, shift_threshold)
+    elif row_widths is not None:
+        print(f"  Creating spatial plot (circular: {len(row_widths)} rows)...")
+        pos_df = create_position_mapping_circular(row_widths)
+        spatial_plot_path = output_dir / "alignment_shifts_spatial.png"
+        plot_shifts_spatial(df_shifts, pos_df, spatial_plot_path, shift_threshold)
+    else:
+        print("  ℹ No acquisition geometry provided, skipping spatial plot")
+        print("    (Use --rows/--columns or --row-widths to enable)")
+
+    print("  ✓ Plot generation complete")
+
+
 def main(
     input_dir: Path,
     output_dir: Path,
     numcycles: int = 3,
     shift_threshold: float = 50.0,
     corr_threshold: float = 0.9,
+    rows: int = None,
+    columns: int = None,
+    row_widths: list = None,
 ):
     """
     Main execution function for Pipeline 6 QC.
@@ -585,6 +948,9 @@ def main(
         numcycles: Number of barcoding cycles
         shift_threshold: Threshold for flagging large shifts (pixels)
         corr_threshold: Threshold for flagging poor correlations
+        rows: Number of rows for square acquisition (for spatial plot)
+        columns: Number of columns for square acquisition (for spatial plot)
+        row_widths: Row widths array for circular acquisition (for spatial plot)
     """
     print("Pipeline 6 QC: Barcode Alignment Analysis")
     print(f"Input: {input_dir}")
@@ -640,6 +1006,18 @@ def main(
     # Print summary to stdout
     print_summary_stats(summary, flagged, shift_threshold, corr_threshold)
 
+    # Generate plots
+    generate_plots(
+        df_shifts,
+        df_corr,
+        output_dir,
+        shift_threshold,
+        corr_threshold,
+        rows=rows,
+        columns=columns,
+        row_widths=row_widths,
+    )
+
     print(f"\nQC reports written to: {output_dir}")
 
 
@@ -679,7 +1057,50 @@ if __name__ == "__main__":
         help="Correlation threshold for flagging (default: 0.9)",
     )
 
+    # Acquisition geometry for spatial plot (optional)
+    geometry_group = parser.add_argument_group(
+        "acquisition geometry",
+        "Optional parameters for spatial heatmap visualization. "
+        "Provide EITHER (--rows AND --columns) for square acquisition "
+        "OR --row-widths for circular acquisition.",
+    )
+
+    geometry_group.add_argument(
+        "--rows",
+        type=int,
+        help="Number of rows in square acquisition grid",
+    )
+
+    geometry_group.add_argument(
+        "--columns",
+        type=int,
+        help="Number of columns in square acquisition grid",
+    )
+
+    geometry_group.add_argument(
+        "--row-widths",
+        type=str,
+        help="Comma-separated row widths for circular acquisition (e.g., '5,11,17,19,...')",
+    )
+
     args = parser.parse_args()
+
+    # Validate geometry arguments
+    if (args.rows is not None) != (args.columns is not None):
+        parser.error("--rows and --columns must be used together")
+
+    if args.row_widths and (args.rows or args.columns):
+        parser.error(
+            "Cannot use --row-widths with --rows/--columns (choose one acquisition pattern)"
+        )
+
+    # Parse row_widths if provided
+    row_widths_list = None
+    if args.row_widths:
+        try:
+            row_widths_list = [int(x.strip()) for x in args.row_widths.split(",")]
+        except ValueError:
+            parser.error("--row-widths must be comma-separated integers")
 
     try:
         main(
@@ -688,6 +1109,9 @@ if __name__ == "__main__":
             numcycles=args.numcycles,
             shift_threshold=args.shift_threshold,
             corr_threshold=args.corr_threshold,
+            rows=args.rows,
+            columns=args.columns,
+            row_widths=row_widths_list,
         )
     except Exception as e:
         print(f"\nERROR: {e}", file=sys.stderr)

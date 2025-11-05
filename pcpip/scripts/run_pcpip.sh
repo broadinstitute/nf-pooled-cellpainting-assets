@@ -40,6 +40,10 @@ WELLS=("A1") # MUST match the wells filtered in LoadData CSVs (see filter_loadda
 SITES=(0 1 2 3) # This has to be consistent with load data csv files and the settings in stitch_crop.py (rows x columns)
 CYCLES=(1 2 3) # This has to be consistent with the barcoding pipeline
 
+# Barcoding acquisition geometry for spatial QC plots (matches test data)
+BARCODING_ROWS=2
+BARCODING_COLUMNS=2
+
 # Derived tile indices for cropped outputs used by Pipeline 9 (Analysis)
 TILES=(1 2 3 4)
 
@@ -188,7 +192,7 @@ declare -A QC_CONFIG=(
   [6_qc_align,output]="../../workspace/qc_reports/6_alignment/PLATE"
   [6_qc_align,output_type]="dir"  # Outputs multiple CSV files
   [6_qc_align,log]="6_qc_align_PLATE"
-  [6_qc_align,extra_args]="--numcycles 3 --shift-threshold 50 --corr-threshold 0.9"
+  [6_qc_align,extra_args]="--numcycles 3 --shift-threshold 50 --corr-threshold 0.9 --rows ${BARCODING_ROWS} --columns ${BARCODING_COLUMNS}"
 
   # QC after Pipeline 8 - Barcoding Stitching (10X preview images)
   [8_qc_stitch,script]="montage.py"

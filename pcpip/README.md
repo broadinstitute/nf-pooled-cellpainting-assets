@@ -86,6 +86,7 @@ PIPELINE_STEP=4_qc_stitch ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=5 ${COMPOSE_CMD} run --rm cellprofiler
 PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP="6,7" ${COMPOSE_CMD} run --rm cellprofiler
+PIPELINE_STEP=6_qc_align ${COMPOSE_CMD} run --rm qc
 
 # (Podman only) Fix permissions for volume mounts
 [ "$COMPOSE_CMD" = "podman-compose" ] && sudo chmod -R 777 data/Source1/images/
@@ -209,9 +210,11 @@ QC includes both visual montages and quantitative analysis:
 - **5_qc_illum**: Montage of barcoding illumination corrections after Pipeline 5
 - **8_qc_stitch**: Montage of barcoding stitched whole-well images (10X previews) after Pipeline 8
 
-**Quantitative QC (CSV Reports)**:
+**Quantitative QC (CSV Reports + Optional Plots)**:
 
-- **6_qc_align**: Barcode alignment analysis after Pipeline 6 - generates CSV reports on pixel shifts and correlation scores between barcoding cycles
+- **6_qc_align**: Barcode alignment analysis after Pipeline 6
+  - Always generates: 4 CSV reports analyzing pixel shifts and correlation scores between barcoding cycles
+  - Optional (with `PLOT_QC=true`): Visualization plots including shift catplots, correlation catplots, and spatial heatmaps
 
 #### Running QC Steps
 
@@ -223,8 +226,11 @@ PIPELINE_STEP=4_qc_stitch ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=8_qc_stitch ${COMPOSE_CMD} run --rm qc
 
-# Run quantitative QC analysis via Docker/Podman
+# Run quantitative QC analysis via Docker/Podman (CSV reports only)
 PIPELINE_STEP=6_qc_align ${COMPOSE_CMD} run --rm qc
+
+# Run quantitative QC with visualization plots
+PLOT_QC=true PIPELINE_STEP=6_qc_align ${COMPOSE_CMD} run --rm qc
 
 # Run montage script locally with Pixi
 # Example: Illumination QC
@@ -248,7 +254,7 @@ pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.
   data/Source1/workspace/qc_reports/8_stitching_bc/Plate1/montage.png \
   --pattern "Stitched_Cycle01_DNA\\.tiff$"
 
-# Example: Alignment QC
+# Example: Alignment QC (CSV reports only)
 pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 -- \
   python scripts/qc_barcode_align.py \
   data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
@@ -256,6 +262,33 @@ pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 -- \
   --numcycles 3 \
   --shift-threshold 50 \
   --corr-threshold 0.9
+
+# Example: Alignment QC with plots (requires matplotlib/seaborn)
+pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 --spec seaborn=0.13.2 -- \
+  python scripts/qc_barcode_align.py \
+  data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
+  data/Source1/workspace/qc_reports/6_alignment/Plate1 \
+  --numcycles 3 \
+  --plot
+
+# Example: Alignment QC with spatial plot (square acquisition: 2x2)
+pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 --spec seaborn=0.13.2 -- \
+  python scripts/qc_barcode_align.py \
+  data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
+  data/Source1/workspace/qc_reports/6_alignment/Plate1 \
+  --numcycles 3 \
+  --plot \
+  --rows 2 \
+  --columns 2
+
+# Example: Alignment QC with spatial plot (circular acquisition)
+pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 --spec seaborn=0.13.2 -- \
+  python scripts/qc_barcode_align.py \
+  data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
+  data/Source1/workspace/qc_reports/6_alignment/Plate1 \
+  --numcycles 3 \
+  --plot \
+  --row-widths "2,2"
 ```
 
 ### Troubleshooting

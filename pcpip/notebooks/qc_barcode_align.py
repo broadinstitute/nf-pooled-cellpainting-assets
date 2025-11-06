@@ -74,6 +74,7 @@ elif row_widths:
 # %% [markdown]
 # ## Helper Functions
 
+
 # %%
 def merge_csvs(csvfolder, filename, column_list=None, filter_string=None):
     """
@@ -107,6 +108,7 @@ def merge_csvs(csvfolder, filename, column_list=None, filter_string=None):
     print("done concatenating at", datetime.datetime.ctime(datetime.datetime.now()))
 
     return df_merged
+
 
 # %% [markdown]
 # ## Create Position Mapping for Spatial Plots
@@ -152,7 +154,9 @@ elif row_widths:
         .reset_index()
         .rename(columns={"index": "loc", 0: "Metadata_Site"})
     )
-    pos_df[["x_loc", "y_loc"]] = pd.DataFrame(pos_df["loc"].tolist(), index=pos_df.index)
+    pos_df[["x_loc", "y_loc"]] = pd.DataFrame(
+        pos_df["loc"].tolist(), index=pos_df.index
+    )
 else:
     print("No geometry provided - spatial plot will be skipped")
 
@@ -181,7 +185,9 @@ id_list = ["Metadata_Well", "Metadata_Plate", "Metadata_Site"]
 column_list = id_list + shift_list + corr_list
 
 print(f"Loading data from: {csvfolder}")
-print(f"Columns to extract: {len(column_list)} ({len(shift_list)} shifts, {len(corr_list)} correlations)")
+print(
+    f"Columns to extract: {len(column_list)} ({len(shift_list)} shifts, {len(corr_list)} correlations)"
+)
 
 df_image = merge_csvs(
     csvfolder, "BarcodingApplication_Image.csv", column_list, filter_string=None
@@ -224,7 +230,9 @@ sns.catplot(
     col="Metadata_Well",
     row="Metadata_Plate",
 )
-plt.savefig(Path(output_dir) / "alignment_shifts_no_limits.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    Path(output_dir) / "alignment_shifts_no_limits.png", dpi=150, bbox_inches="tight"
+)
 plt.show()
 
 # %% [markdown]
@@ -240,7 +248,9 @@ g = sns.catplot(
     row="Metadata_Plate",
 )
 g.set(xlim=(-200, 200))
-plt.savefig(Path(output_dir) / "alignment_shifts_xlim.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    Path(output_dir) / "alignment_shifts_xlim.png", dpi=150, bbox_inches="tight"
+)
 plt.show()
 
 # %% [markdown]
@@ -288,7 +298,11 @@ if pos_df is not None:
             s=150,
         )
         print(g._legend_data)
-        plt.savefig(Path(output_dir) / "alignment_shifts_spatial.png", dpi=150, bbox_inches="tight")
+        plt.savefig(
+            Path(output_dir) / "alignment_shifts_spatial.png",
+            dpi=150,
+            bbox_inches="tight",
+        )
         plt.show()
     else:
         print(f"No sites with shifts >{value} and <200 pixels")
@@ -313,7 +327,9 @@ g = sns.catplot(
 )
 g.refline(x=corr_threshold, color="red")
 g.set(xlim=(0, None))
-plt.savefig(Path(output_dir) / "alignment_correlations_all.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    Path(output_dir) / "alignment_correlations_all.png", dpi=150, bbox_inches="tight"
+)
 plt.show()
 
 # %% [markdown]
@@ -332,7 +348,11 @@ g = sns.catplot(
 )
 g.refline(x=corr_threshold, color="red")
 g.set(xlim=(0, None))
-plt.savefig(Path(output_dir) / "alignment_correlations_cycle01.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    Path(output_dir) / "alignment_correlations_cycle01.png",
+    dpi=150,
+    bbox_inches="tight",
+)
 plt.show()
 
 # %% [markdown]

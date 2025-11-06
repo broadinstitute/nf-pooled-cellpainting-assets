@@ -151,7 +151,7 @@ declare -A STITCH_CONFIG=(
 # Define QC check configurations
 declare -A QC_CONFIG=(
   # QC after Pipeline 1 - Cell Painting Illumination (no Cycle in filename)
-  [1_qc_illum,script]="montage.py"
+  [1_qc_illum,script]="scripts/montage.py"
   [1_qc_illum,input]="illum/PLATE"
   [1_qc_illum,output]="../../workspace/qc_reports/1_illumination_cp/PLATE"
   [1_qc_illum,output_type]="file"  # 'file' or 'dir'
@@ -160,7 +160,7 @@ declare -A QC_CONFIG=(
   [1_qc_illum,extra_args]="--pattern \"^(?!.*Cycle).*\.npy$\""  # Regex: .npy files NOT containing 'Cycle'
 
   # QC after Pipeline 3 - Segmentation Check
-  [3_qc_seg,script]="montage.py"
+  [3_qc_seg,script]="scripts/montage.py"
   [3_qc_seg,input]="images_segmentation/painting/PLATE/PLATE-WELL"
   [3_qc_seg,output]="../../workspace/qc_reports/3_segmentation/PLATE/PLATE-WELL"
   [3_qc_seg,output_type]="file"
@@ -169,7 +169,7 @@ declare -A QC_CONFIG=(
   [3_qc_seg,extra_args]="--pattern \".*SegmentCheck\.png$\""  # Regex: files ending with SegmentCheck.png
 
   # QC after Pipeline 5 - Barcoding Illumination (with Cycle in filename)
-  [5_qc_illum,script]="montage.py"
+  [5_qc_illum,script]="scripts/montage.py"
   [5_qc_illum,input]="illum/PLATE"
   [5_qc_illum,output]="../../workspace/qc_reports/5_illumination_bc/PLATE"
   [5_qc_illum,output_type]="file"
@@ -178,7 +178,7 @@ declare -A QC_CONFIG=(
   [5_qc_illum,extra_args]="--pattern \".*Cycle.*\.npy$\""  # Regex: .npy files containing 'Cycle'
 
   # QC after Pipeline 4 - Cell Painting Stitching (10X preview images)
-  [4_qc_stitch,script]="montage.py"
+  [4_qc_stitch,script]="scripts/montage.py"
   [4_qc_stitch,input]="images_corrected_stitched_10X/painting/PLATE"
   [4_qc_stitch,output]="../../workspace/qc_reports/4_stitching_cp/PLATE"
   [4_qc_stitch,output_type]="file"
@@ -187,7 +187,7 @@ declare -A QC_CONFIG=(
   [4_qc_stitch,extra_args]="--pattern \"Stitched_CorrDNA\.tiff$\""  # DNA channel only
 
   # QC after Pipeline 6 - Barcoding Alignment Analysis
-  [6_qc_align,script]="qc_barcode_align.py"
+  [6_qc_align,script]="notebooks/qc_barcode_align.py"
   [6_qc_align,input]="images_aligned/barcoding/PLATE"
   [6_qc_align,output]="../../workspace/qc_reports/6_alignment/PLATE"
   [6_qc_align,output_type]="dir"  # Outputs multiple CSV files
@@ -195,7 +195,7 @@ declare -A QC_CONFIG=(
   [6_qc_align,extra_args]="--numcycles 3 --shift-threshold 50 --corr-threshold 0.9 --rows ${BARCODING_ROWS} --columns ${BARCODING_COLUMNS}"
 
   # QC after Pipeline 8 - Barcoding Stitching (10X preview images)
-  [8_qc_stitch,script]="montage.py"
+  [8_qc_stitch,script]="scripts/montage.py"
   [8_qc_stitch,input]="images_corrected_stitched_10X/barcoding/PLATE"
   [8_qc_stitch,output]="../../workspace/qc_reports/8_stitching_bc/PLATE"
   [8_qc_stitch,output_type]="file"
@@ -329,6 +329,25 @@ STITCH_AUTORUN=\"true\" \
   run_with_logging "$cmd" "$log_file" "$run_background"
 }
 
+# Helper function to convert CLI args to Papermill parameters
+# Converts: --arg-name value --other-arg value
+# To:       -p arg_name value -p other_arg value
+convert_cli_to_papermill_params() {
+  local cli_args="$1"
+  echo "$cli_args" | awk '{
+    for (i=1; i<=NF; i++) {
+      if ($i ~ /^--/) {
+        # Remove -- prefix and convert hyphens to underscores
+        param = substr($i, 3)
+        gsub(/-/, "_", param)
+        printf "-p %s ", param
+      } else {
+        printf "%s ", $i
+      }
+    }
+  }'
+}
+
 # Function to run QC checks
 run_qc_check() {
   local qc_key=$1
@@ -353,8 +372,11 @@ run_qc_check() {
   # Create output directory if needed
   mkdir -p "${output_dir}"
 
+  # Script path already includes directory (scripts/ or notebooks/)
+  local script_base_path="/app/${script}"
+
   # Build command - scripts have shebang and execute permissions
-  local cmd="/app/scripts/${script} \"${input_dir}\" \"${output_path}\""
+  local cmd="${script_base_path} \"${input_dir}\" \"${output_path}\""
   if [[ -n "$extra_args" ]]; then
     cmd+=" ${extra_args}"
   fi
@@ -372,24 +394,23 @@ run_qc_check() {
   fi
   echo "Logging to: $log_file"
 
-  # Special handling for notebook-based QC (any .py script is treated as Jupytext notebook)
-  if [[ "$script" == *.py ]]; then
+  # Special handling for Jupytext notebooks (files in notebooks/ directory)
+  if [[ "$script" == notebooks/* ]]; then
     echo "Executing as Jupyter notebook with Papermill"
 
-    # Convert CLI args (--key value) to Papermill params (-p key value)
-    # Replace -- with -p and convert hyphenated-keys to underscored_keys
+    # Convert CLI args to Papermill parameters
     local papermill_params=""
     if [[ -n "$extra_args" ]]; then
-      # Convert --arg-name value to -p arg_name value
-      papermill_params=$(echo "$extra_args" | sed -E 's/--([a-z-]+)/\n-p \1/g' | sed 's/-/_/g' | sed 's/_p /-p /g' | tr '\n' ' ')
+      papermill_params=$(convert_cli_to_papermill_params "$extra_args")
     fi
 
     # Build papermill command
-    local notebook_basename="${script%.py}"
+    local notebook_basename="${script#notebooks/}"  # Remove notebooks/ prefix
+    notebook_basename="${notebook_basename%.py}"    # Remove .py extension
     local tmp_notebook="/tmp/${notebook_basename}_$$.ipynb"
     local output_notebook="${output_dir}/${notebook_basename}_analysis.ipynb"
 
-    cmd="jupytext --to ipynb /app/scripts/${script} -o ${tmp_notebook} && \
+    cmd="jupytext --to ipynb ${script_base_path} -o ${tmp_notebook} && \
 papermill ${tmp_notebook} ${output_notebook} \
 -p input_dir \"${input_dir}\" \
 -p output_dir \"${output_dir}\" \

@@ -84,11 +84,12 @@ services:
 
   # QC service with pandas, numpy, pillow, seaborn, and pandoc for analysis, visualization, and reporting
   qc:
-    image: community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pruned:dc84a269bbf69f3d
+    image: community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pruned:ceb25e4cf96fbce1
     platform: linux/amd64
     container_name: pcpip-qc
     volumes:
       - ./scripts:/app/scripts:ro
+      - ./notebooks:/app/notebooks:ro
       - ./data:/app/data:rw
     working_dir: /app/scripts
     entrypoint: []
@@ -100,11 +101,12 @@ services:
     tty: true
 
   qc-shell:
-    image: community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pruned:dc84a269bbf69f3d
+    image: community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pruned:ceb25e4cf96fbce1
     platform: linux/amd64
     container_name: pcpip-qc-shell
     volumes:
       - ./scripts:/app/scripts:ro
+      - ./notebooks:/app/notebooks:ro
       - ./data:/app/data:rw
     working_dir: /app
     entrypoint: []

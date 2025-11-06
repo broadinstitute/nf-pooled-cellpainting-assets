@@ -329,10 +329,10 @@ ${COMPOSE_CMD} run --rm \
   -e STITCH_AUTORUN="true" \
   fiji /opt/fiji/Fiji.app/ImageJ-linux64 --ij2 --headless --run /app/scripts/stitch_crop.py
 
-# Expected outputs per channel (3 channels × 3 output types = 9 files per channel):
-# - images_corrected_stitched/painting/Plate1/Plate1-A1/Stitched_Corr{CHANNEL}.tiff (1600×1600)
-# - images_corrected_cropped/painting/Plate1/Plate1-A1/Corr{CHANNEL}/Corr{CHANNEL}_Site_{1-4}.tiff (800×800)
-# - images_corrected_stitched_10X/painting/Plate1/Plate1-A1/Stitched_Corr{CHANNEL}.tiff (160×160)
+# Expected outputs per channel (3 channels × 3 output types, Nov 2025 naming):
+# - images_corrected_stitched/painting/Plate1/Plate1-A1/Plate1-A1-Corr{CHANNEL}-Stitched.tiff (1600×1600)
+# - images_corrected_cropped/painting/Plate1/Plate1-A1/Plate_Plate1_Well_A1_Site_{1-4}_Corr{CHANNEL}.tiff (800×800)
+# - images_corrected_stitched_10X/painting/Plate1/Plate1-A1/Plate1-A1-Corr{CHANNEL}-Stitched.tiff (160×160)
 ```
 
 ### Maintainer Notes

@@ -184,7 +184,7 @@ declare -A QC_CONFIG=(
   [4_qc_stitch,output_type]="file"
   [4_qc_stitch,output_name]="montage.png"
   [4_qc_stitch,log]="4_qc_stitch_PLATE"
-  [4_qc_stitch,extra_args]="--pattern \"Stitched_CorrDNA\.tiff$\""  # DNA channel only
+  [4_qc_stitch,extra_args]="--pattern \".*-CorrDNA-Stitched\.tiff$\""  # DNA channel only (Nov 2025 naming)
 
   # QC after Pipeline 6 - Barcoding Alignment Analysis
   [6_qc_align,script]="notebooks/qc_barcode_align.py"
@@ -209,7 +209,7 @@ declare -A QC_CONFIG=(
   [8_qc_stitch,output_type]="file"
   [8_qc_stitch,output_name]="montage.png"
   [8_qc_stitch,log]="8_qc_stitch_PLATE"
-  [8_qc_stitch,extra_args]="--pattern \"Stitched_Cycle01_DNA\.tiff$\""  # Cycle 1 DNA only
+  [8_qc_stitch,extra_args]="--pattern \".*-Cycle01_DNA-Stitched\.tiff$\""  # Cycle 1 DNA only (Nov 2025 naming)
 )
 
 

@@ -12,9 +12,11 @@ IMPORTANT - Naming Convention Dependencies:
 This script relies on specific file and directory naming patterns from the PCPIP pipeline.
 If the pipeline's naming conventions change, update the PATTERN_* constants below.
 
-Current patterns (as of 2025):
-- Stitched images: {PlateName}-{WellID}/Stitched_Corr{Channel}.tiff (Cell Painting)
-                   {PlateName}-{WellID}/Stitched_Cycle##_{Channel}.tiff (Barcoding)
+Current patterns (as of Nov 2025):
+- Stitched images: {Plate}-{Well}-Corr{Channel}-Stitched.tiff (Cell Painting)
+                   {Plate}-{Well}-Cycle##_{Channel}-Stitched.tiff (Barcoding)
+- Cropped tiles:   Plate_{Plate}_Well_{Well}_Site_{Site}_Corr{Channel}.tiff (Cell Painting)
+                   Plate_{Plate}_Well_{Well}_Site_{Site}_Cycle##_{Channel}.tiff (Barcoding)
 - Illumination:    Plate#_Illum{Channel}.npy or Plate#_IllumCycle##_{Channel}.npy
 - Segmentation:    Plate_{Plate}_Well_{Well}_Site_{Site}_{Channel}_SegmentCheck.png
 
@@ -23,20 +25,22 @@ Usage:
     ./montage.py input_dir output.png --pattern ".*\\.npy$"
 
     # Using pixi for dependency management (recommended):
-    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python montage.py input_dir output.png --pattern ".*\\.npy$"
-
-    # Examples with regex patterns:
-    # All .npy files:
-    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python montage.py data/illum/Plate1 illum_montage.png --pattern ".*\\.npy$"
+    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python montage.py input_dir output.png --pattern '.*.npy$'
 
     # Cell Painting illumination only (exclude Cycle):
-    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python montage.py data/illum/Plate1 illum_montage.png --pattern "^(?!.*Cycle).*\\.npy$"
+    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/illum/Plate1 illum_montage.png --pattern '^(?!.*Cycle).*.npy$'
 
     # Barcoding illumination only (must contain Cycle):
-    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python montage.py data/illum/Plate1 illum_montage.png --pattern ".*Cycle.*\\.npy$"
+    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/illum/Plate1 illum_montage.png --pattern '.*Cycle.*.npy$'
 
     # Segmentation check images:
-    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python montage.py data/segmentation/Plate1-A1 seg_montage.png --pattern ".*SegmentCheck\\.png$"
+    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/images_segmentation/painting/Plate1 seg_montage.png --pattern '.*SegmentCheck.png$'
+
+    # Stitched Cell Painting images (single channel):
+    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1 stitch_cp_montage.png --pattern '.*-CorrDNA-Stitched.tiff$'
+
+    # Stitched Barcoding images (single channel, single cycle):
+    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/images_corrected_stitched_10X/barcoding/Plate1 stitch_bc_montage.png --pattern '.*-Cycle01_DNA-Stitched.tiff$'
 """
 
 import re
@@ -53,17 +57,16 @@ from PIL import Image, ImageDraw, ImageFont
 # These regex patterns are tied to PCPIP pipeline naming conventions.
 # If file/directory naming changes, update these constants.
 
-# Well identification (from parent directory name)
-# Matches: "Plate1-A1" -> extracts "A1"
-PATTERN_WELL_DIR = r"-([A-Z]\d+)$"
+# Well identification (from filename - explicit format)
+# Matches: "Well_A1" -> extracts "A1"
+PATTERN_WELL_FILENAME = r"Well_([A-Z]\d+)"
 
-# Channel extraction from stitched Cell Painting images
-# Matches: "Stitched_CorrDNA.tiff" -> extracts "DNA"
-PATTERN_STITCH_CP_CHANNEL = r"Stitched_Corr([A-Za-z0-9]+)"
+# Stitched image patterns (compact format with hyphens, Nov 2025)
+# Cell Painting: Matches "Plate1-A1-CorrDNA-Stitched.tiff" -> extracts well "A1" and channel "DNA"
+PATTERN_STITCH_CP = r"([A-Za-z0-9]+)-([A-Z]\d+)-Corr([A-Za-z0-9]+)-Stitched"
 
-# Channel extraction from stitched Barcoding images
-# Matches: "Stitched_Cycle01_DNA.tiff" -> extracts "DNA"
-PATTERN_STITCH_BC_CHANNEL = r"Stitched_Cycle\d+_([A-Za-z0-9]+)"
+# Barcoding: Matches "Plate1-A1-Cycle01_DNA-Stitched.tiff" -> extracts well "A1" and cycle-channel "Cycle01_DNA"
+PATTERN_STITCH_BC = r"([A-Za-z0-9]+)-([A-Z]\d+)-(Cycle\d+_[A-Za-z0-9]+)-Stitched"
 
 # Cycle identification in barcoding files
 # Matches: "Cycle01" -> extracts "01"
@@ -163,25 +166,41 @@ def extract_pattern_groups(files: List[Path]) -> Dict[str, List[Tuple[str, Path]
     for file_path in files:
         name = file_path.stem
 
-        # Check for well-based directory structure (e.g., {PlateName}-A1/Stitched_CorrDNA.tiff)
-        # Extract well ID from parent directory name (after last dash)
-        parent_name = file_path.parent.name
-        well_match = re.search(PATTERN_WELL_DIR, parent_name)
-        if well_match:
-            well = well_match.group(1)
+        # Check for site-based patterns FIRST (segmentation images & cropped tiles)
+        # These have site info in filename
+        site_match = re.search(PATTERN_SITE, name)
+        if site_match:
+            site_num = site_match.group(1)
 
-            # Also extract channel from filename for label
-            channel = None
-            channel_match = re.search(PATTERN_STITCH_CP_CHANNEL, name)
-            if not channel_match:
-                channel_match = re.search(PATTERN_STITCH_BC_CHANNEL, name)
-            if channel_match:
-                channel = channel_match.group(1)
-                label = f"{well} - {channel}"
+            # Also check for well info in filename
+            well_match = re.search(PATTERN_WELL_FILENAME, name)
+            if well_match:
+                well = well_match.group(1)
+                label = f"{well} - Site{site_num}"
             else:
-                label = well
+                label = f"Site{site_num}"
 
-            patterns.setdefault("well", []).append((label, file_path))
+            patterns.setdefault("site", []).append((label, file_path))
+            continue
+
+        # Check for stitched Cell Painting images (compact format: Plate1-A1-CorrDNA-Stitched.tiff)
+        stitch_cp_match = re.search(PATTERN_STITCH_CP, name)
+        if stitch_cp_match:
+            # group(1) is plate (unused here), group(2) is well, group(3) is channel
+            well = stitch_cp_match.group(2)
+            channel = stitch_cp_match.group(3)
+            label = f"{well} - {channel}"
+            patterns.setdefault("stitched", []).append((label, file_path))
+            continue
+
+        # Check for stitched Barcoding images (compact format: Plate1-A1-Cycle01_DNA-Stitched.tiff)
+        stitch_bc_match = re.search(PATTERN_STITCH_BC, name)
+        if stitch_bc_match:
+            # group(1) is plate (unused here), group(2) is well, group(3) is cycle_channel
+            well = stitch_bc_match.group(2)
+            cycle_channel = stitch_bc_match.group(3)
+            label = f"{well} - {cycle_channel}"
+            patterns.setdefault("stitched", []).append((label, file_path))
             continue
 
         # Check for cycle-based patterns (for barcoding)
@@ -201,13 +220,6 @@ def extract_pattern_groups(files: List[Path]) -> Dict[str, List[Tuple[str, Path]
         if illum_match:
             channel = illum_match.group(1)
             patterns.setdefault("channel", []).append((channel, file_path))
-            continue
-
-        # Check for site-based patterns (segmentation images)
-        site_match = re.search(PATTERN_SITE, name)
-        if site_match:
-            site = f"Site{site_match.group(1)}"
-            patterns.setdefault("site", []).append((site, file_path))
             continue
 
         # Default: use filename stem
@@ -449,10 +461,10 @@ def main(
             grid = (len(items), 1)
         print(f"Organizing {len(items)} channels in a row")
 
-    elif "well" in pattern_groups:
-        # Well-based layout (for stitched images)
-        items = sorted(pattern_groups["well"], key=lambda x: natural_sort_key(x[0]))
-        print(f"Organizing {len(items)} wells")
+    elif "stitched" in pattern_groups:
+        # Stitched image layout (well + channel combinations)
+        items = sorted(pattern_groups["stitched"], key=lambda x: natural_sort_key(x[0]))
+        print(f"Organizing {len(items)} stitched images")
 
     elif "site" in pattern_groups:
         # Site-based layout

@@ -221,16 +221,9 @@ PIPELINE_STEP=1_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=3_qc_seg ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=4_qc_stitch ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
-PIPELINE_STEP=8_qc_stitch ${COMPOSE_CMD} run --rm qc
-
-# Run quantitative QC analysis via Docker/Podman
-# Executes Jupyter notebooks via Papermill
-
-# Pipeline 6: Alignment analysis (5 plots)
 PIPELINE_STEP=6_qc_align ${COMPOSE_CMD} run --rm qc
-
-# Pipeline 7: Barcode preprocessing analysis (8+ plots + text summaries)
 PIPELINE_STEP=7_qc_preprocess ${COMPOSE_CMD} run --rm qc
+PIPELINE_STEP=8_qc_stitch ${COMPOSE_CMD} run --rm qc
 
 # === Local execution with Pixi (for interactive/custom use) ===
 # The examples below show how to run QC scripts locally without Docker
@@ -241,21 +234,21 @@ pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.
   python scripts/montage.py \
   data/Source1/images/Batch1/illum/Plate1 \
   output_montage.png \
-  --pattern ".*\\.npy$"
+  --pattern ".*Cycle.*.npy$"
 
 # Example: Stitching QC for Cell Painting
 pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
   python scripts/montage.py \
   data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1 \
   data/Source1/workspace/qc_reports/4_stitching_cp/Plate1/montage.png \
-  --pattern "Stitched_CorrDNA\\.tiff$"
+  --pattern ".*CorrDNA-Stitched\\.tiff$"
 
 # Example: Stitching QC for Barcoding
 pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
   python scripts/montage.py \
   data/Source1/images/Batch1/images_corrected_stitched_10X/barcoding/Plate1 \
   data/Source1/workspace/qc_reports/8_stitching_bc/Plate1/montage.png \
-  --pattern "Stitched_Cycle01_DNA\\.tiff$"
+  --pattern ".*Cycle01_DNA-Stitched\\.tiff$"
 
 # Example: Alignment QC - Execute notebook with Papermill
 pixi exec -c conda-forge \
@@ -270,7 +263,7 @@ bash -c '
   OUTPUT_DIR="data/Source1/workspace/qc_reports/6_alignment/Plate1"
   mkdir -p $OUTPUT_DIR
   # Convert .py to .ipynb, then execute with papermill
-  jupytext --to ipynb scripts/qc_barcode_align.py -o /tmp/qc_barcode_align.ipynb
+  jupytext --to ipynb notebooks/qc_barcode_align.py -o /tmp/qc_barcode_align.ipynb
   papermill /tmp/qc_barcode_align.ipynb $OUTPUT_DIR/alignment_analysis.ipynb \
     -p input_dir "$(pwd)/data/Source1/images/Batch1/images_aligned/barcoding/Plate1" \
     -p output_dir "$(pwd)/$OUTPUT_DIR" \

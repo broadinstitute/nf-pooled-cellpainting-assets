@@ -274,6 +274,9 @@ bash -c '
     -p rows 2 \
     -p columns 2
 '
+
+# Note: QC notebooks cache data as parquet files for fast interactive re-runs.
+# Production runs via Docker always regenerate fresh data (use_cache=false in `run_pcpip.sh`).
 ```
 
 ### Troubleshooting
@@ -314,6 +317,15 @@ ${COMPOSE_CMD} run --rm \
 ```
 
 ### Maintainer Notes
+
+#### Creating a container
+
+Go to <https://seqera.io/containers/>, use only `conda-forge` as the source (on the left), and select the packages you need
+
+For example, building it out like this <https://seqera.io/containers/?packages=conda-forge::pandas=2.3.3+conda-forge::pip=25.2+conda-forge::pyarrow=22.0.0+conda-forge::seaborn=0.13.2+conda-forge::pillow=12.0.0+conda-forge::ipykernel=7.1.0+conda-forge::papermill=2.6.0+conda-forge::python=3.13.9+conda-forge::jupytext=1.18.1> will create the image `community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pyarrow:74e6f9f9f4da4981`, with the build page <https://wave.seqera.io/view/builds/bd-74e6f9f9f4da4981_1>
+
+- Use Python <3.14 because of some compatibility issues.
+- `jupytext` defaults to `master`; use the latest version instead.
 
 #### Validating Generated CSVs
 

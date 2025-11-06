@@ -54,6 +54,11 @@ rows = 2
 columns = 2
 row_widths = None  # Example: [5, 11, 17, 19, 23, 25, 27, 29, ...]
 
+# Cache control
+# Set to True for interactive use (fast re-runs with cached data)
+# Set to False for production pipelines (always regenerate from source)
+use_cache = True
+
 # %%
 # Process parameters and create output directory
 Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -262,6 +267,7 @@ plt.show()
 
 # %%
 csvfolder = input_dir
+cache_file = Path(output_dir) / "cached_barcode_foci.parquet"
 filename = "BarcodePreprocessing_Foci.csv"
 column_list = [
     "ImageNumber",
@@ -277,10 +283,23 @@ column_list = [
     "Barcode_MatchedTo_Score",
 ]
 
-print(f"Loading data from: {csvfolder}")
-df_foci = merge_csvs(csvfolder, filename, column_list)
+# Load data with caching support
+if use_cache and cache_file.exists():
+    print(f"Loading cached data from: {cache_file}")
+    df_foci = pd.read_parquet(cache_file)
+    print(f"Loaded {len(df_foci)} barcode foci from cache")
+else:
+    print(f"Loading data from: {csvfolder}")
+    df_foci = merge_csvs(csvfolder, filename, column_list)
 
-print(f"Loaded {len(df_foci)} barcode foci")
+    print(f"Loaded {len(df_foci)} barcode foci")
+
+    # Cache for future use
+    # Note: Only columns specified in column_list are loaded and cached
+    print(f"Caching data to: {cache_file}")
+    df_foci.to_parquet(cache_file, compression="gzip", index=False)
+    print("Cache saved")
+
 print(f"Columns: {df_foci.columns.tolist()}")
 
 # Auto-detect imperwell if not set

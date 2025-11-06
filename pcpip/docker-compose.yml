@@ -84,7 +84,7 @@ services:
 
   # QC service with pandas, numpy, pillow, seaborn, and pandoc for analysis, visualization, and reporting
   qc:
-    image: community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pruned:ceb25e4cf96fbce1
+    image: community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pruned:74e6f9f9f4da4981
     platform: linux/amd64
     container_name: pcpip-qc
     volumes:
@@ -101,7 +101,7 @@ services:
     tty: true
 
   qc-shell:
-    image: community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pruned:ceb25e4cf96fbce1
+    image: community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pruned:74e6f9f9f4da4981
     platform: linux/amd64
     container_name: pcpip-qc-shell
     volumes:

@@ -55,6 +55,11 @@ rows = 2
 columns = 2
 row_widths = None  # Example: [5, 11, 17, 19, 23, 25, 27, 29, ...]
 
+# Cache control
+# Set to True for interactive use (fast re-runs with cached data)
+# Set to False for production pipelines (always regenerate from source)
+use_cache = True
+
 # %%
 # Process parameters and create output directory
 Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -168,6 +173,7 @@ if pos_df is not None:
 
 # %%
 csvfolder = input_dir
+cache_file = Path(output_dir) / "cached_alignment_data.parquet"
 
 # Build column lists
 # Note: Pipeline 6 uses "DNA" channel name (not "DAPI")
@@ -184,16 +190,28 @@ for cycle in range(1, numcycles + 1):
 id_list = ["Metadata_Well", "Metadata_Plate", "Metadata_Site"]
 column_list = id_list + shift_list + corr_list
 
-print(f"Loading data from: {csvfolder}")
-print(
-    f"Columns to extract: {len(column_list)} ({len(shift_list)} shifts, {len(corr_list)} correlations)"
-)
+# Load data with caching support
+if use_cache and cache_file.exists():
+    print(f"Loading cached data from: {cache_file}")
+    df_image = pd.read_parquet(cache_file)
+    print(f"Loaded {len(df_image)} rows from cache")
+else:
+    print(f"Loading data from: {csvfolder}")
+    print(
+        f"Columns to extract: {len(column_list)} ({len(shift_list)} shifts, {len(corr_list)} correlations)"
+    )
 
-df_image = merge_csvs(
-    csvfolder, "BarcodingApplication_Image.csv", column_list, filter_string=None
-)
+    df_image = merge_csvs(
+        csvfolder, "BarcodingApplication_Image.csv", column_list, filter_string=None
+    )
 
-print(f"Loaded {len(df_image)} rows")
+    print(f"Loaded {len(df_image)} rows")
+
+    # Cache for future use
+    # Note: Only columns specified in column_list are loaded and cached
+    print(f"Caching data to: {cache_file}")
+    df_image.to_parquet(cache_file, compression="gzip", index=False)
+    print("Cache saved")
 
 # Auto-detect imperwell if not set
 if imperwell is None:

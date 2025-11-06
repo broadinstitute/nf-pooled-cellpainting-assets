@@ -422,6 +422,7 @@ run_qc_check() {
 papermill ${tmp_notebook} ${output_notebook} \
 -p input_dir \"${input_dir}\" \
 -p output_dir \"${output_dir}\" \
+-p use_cache false \
 ${papermill_params} && \
 rm -f ${tmp_notebook}"
 

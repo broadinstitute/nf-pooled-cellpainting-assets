@@ -372,6 +372,33 @@ run_qc_check() {
   fi
   echo "Logging to: $log_file"
 
+  # Special handling for notebook-based QC (any .py script is treated as Jupytext notebook)
+  if [[ "$script" == *.py ]]; then
+    echo "Executing as Jupyter notebook with Papermill"
+
+    # Convert CLI args (--key value) to Papermill params (-p key value)
+    # Replace -- with -p and convert hyphenated-keys to underscored_keys
+    local papermill_params=""
+    if [[ -n "$extra_args" ]]; then
+      # Convert --arg-name value to -p arg_name value
+      papermill_params=$(echo "$extra_args" | sed -E 's/--([a-z-]+)/\n-p \1/g' | sed 's/-/_/g' | sed 's/_p /-p /g' | tr '\n' ' ')
+    fi
+
+    # Build papermill command
+    local notebook_basename="${script%.py}"
+    local tmp_notebook="/tmp/${notebook_basename}_$$.ipynb"
+    local output_notebook="${output_dir}/${notebook_basename}_analysis.ipynb"
+
+    cmd="jupytext --to ipynb /app/scripts/${script} -o ${tmp_notebook} && \
+papermill ${tmp_notebook} ${output_notebook} \
+-p input_dir \"${input_dir}\" \
+-p output_dir \"${output_dir}\" \
+${papermill_params} && \
+rm -f ${tmp_notebook}"
+
+    echo "Papermill command: $cmd"
+  fi
+
   # Run with logging
   run_with_logging "$cmd" "$log_file" "false"
 }
@@ -494,6 +521,8 @@ if should_run_step 6; then
 fi
 
 # 6_qc_align - QC for Barcoding alignment
+# Executes qc_barcode_align.py as a Jupyter notebook using Papermill
+# Output: alignment_analysis.ipynb with all plots and results embedded
 if should_run_step 6_qc_align; then
   echo "Running QC for Pipeline 6: Alignment Analysis"
   run_qc_check "6_qc_align"

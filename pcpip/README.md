@@ -8,7 +8,7 @@ This pipeline uses three specialized Docker containers:
 
 - **cellprofiler**: Runs CellProfiler pipelines (1-3, 5-7, 9)
 - **fiji**: Runs ImageJ/Fiji stitching (4, 8)
-- **qc**: Runs QC visualizations with Pixi (1_qc_illum, 5_qc_illum)
+- **qc**: Runs QC analysis - montages (1_qc_illum, 3_qc_seg, 4_qc_stitch, 5_qc_illum, 8_qc_stitch) and Jupyter notebooks (6_qc_align)
 
 Each container is called with `PIPELINE_STEP` to specify what to run.
 
@@ -152,7 +152,7 @@ flowchart TD
     Visual inspection"]
 
     PCP6 -.-> QC6["QC: Alignment Analysis
-    CSV reports"]
+    Plots and metrics"]
 
     PCP8 -.-> QC8["QC: Stitching Montage
     Visual inspection"]
@@ -200,24 +200,12 @@ The pipeline currently includes visual QC via montage generation at key processi
 
 #### Available QC Steps
 
-QC includes both visual montages and quantitative analysis:
-
-**Visual QC (Montages)**:
-
-- **1_qc_illum**: Montage of cell painting illumination corrections after Pipeline 1
-- **3_qc_seg**: Montage of segmentation check images after Pipeline 3
-- **4_qc_stitch**: Montage of cell painting stitched whole-well images (10X previews) after Pipeline 4
-- **5_qc_illum**: Montage of barcoding illumination corrections after Pipeline 5
-- **8_qc_stitch**: Montage of barcoding stitched whole-well images (10X previews) after Pipeline 8
-
-**Quantitative QC (CSV Reports + Plots + Markdown Report)**:
-
-- **6_qc_align**: Barcode alignment analysis after Pipeline 6
-  - Always generates:
-    - 4 CSV reports analyzing pixel shifts and correlation scores between barcoding cycles
-    - Visualization plots including shift catplots, correlation catplots, and spatial heatmaps
-    - `alignment_report.md`: Comprehensive markdown report with embedded plots, summary statistics, flagged sites, and interpretation guidance
-    - `alignment_report.html`: Self-contained HTML version (automatically generated if pandoc available)
+- **1_qc_illum**: Montage: painting illumination corrections after Pipeline 1
+- **5_qc_illum**: Montage: barcoding illumination corrections after Pipeline 5
+- **3_qc_seg**: Montage: segmentation check images after Pipeline 3
+- **4_qc_stitch**: Montage: painting stitched whole-well images (10X previews) after Pipeline 4
+- **8_qc_stitch**: Montage: barcoding stitched whole-well images (10X previews) after Pipeline 8
+- **6_qc_align**: Notebook: Barcode alignment analysis after Pipeline 6
 
 #### Running QC Steps
 
@@ -230,11 +218,15 @@ PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=8_qc_stitch ${COMPOSE_CMD} run --rm qc
 
 # Run quantitative QC analysis via Docker/Podman
-# Generates: 4 CSV reports + plots + alignment_report.md
+# Executes Jupyter notebook via Papermill
+# Generates: qc_barcode_align_analysis.ipynb + 5 plots
 PIPELINE_STEP=6_qc_align ${COMPOSE_CMD} run --rm qc
 
-# Run montage script locally with Pixi
-# Example: Illumination QC
+# === Local execution with Pixi (for interactive/custom use) ===
+# The examples below show how to run QC scripts locally without Docker
+# Useful for development, testing, or custom analysis
+
+# Example: Illumination QC montage
 pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
   python scripts/montage.py \
   data/Source1/images/Batch1/illum/Plate1 \
@@ -255,47 +247,30 @@ pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.
   data/Source1/workspace/qc_reports/8_stitching_bc/Plate1/montage.png \
   --pattern "Stitched_Cycle01_DNA\\.tiff$"
 
-# Example: Alignment QC - full run (generates CSVs + plots + reports)
-pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 --spec seaborn=0.13.2 -- \
-  python scripts/qc_barcode_align.py \
-  data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
-  data/Source1/workspace/qc_reports/6_alignment/Plate1 \
-  --numcycles 3 \
-  --shift-threshold 50 \
-  --corr-threshold 0.9
-
-# Example: Alignment QC - CSV generation only (for custom visualization)
-pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 -- \
-  python scripts/qc_barcode_align.py \
-  data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
-  data/Source1/workspace/qc_reports/6_alignment/Plate1 \
-  --numcycles 3 \
-  --csv-only
-
-# Example: Alignment QC with spatial plot (square acquisition: 2x2)
-pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 --spec seaborn=0.13.2 -- \
-  python scripts/qc_barcode_align.py \
-  data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
-  data/Source1/workspace/qc_reports/6_alignment/Plate1 \
-  --numcycles 3 \
-  --rows 2 \
-  --columns 2
-
-# Example: Alignment QC with spatial plot (circular acquisition)
-pixi exec -c conda-forge --spec python=3.13 --spec pandas=2.3.3 --spec seaborn=0.13.2 -- \
-  python scripts/qc_barcode_align.py \
-  data/Source1/images/Batch1/images_aligned/barcoding/Plate1 \
-  data/Source1/workspace/qc_reports/6_alignment/Plate1 \
-  --numcycles 3 \
-  --row-widths "2,2"
+# Example: Alignment QC - Execute notebook with Papermill
+pixi exec -c conda-forge \
+  --spec python=3.13 \
+  --spec pandas=2.3.3 \
+  --spec seaborn=0.13.2 \
+  --spec matplotlib=3.10.0 \
+  --spec papermill=2.6.0 \
+  --spec jupytext=1.16.4 \
+  --spec ipykernel=6.29.5 -- \
+bash -c '
+  OUTPUT_DIR="data/Source1/workspace/qc_reports/6_alignment/Plate1"
+  mkdir -p $OUTPUT_DIR
+  # Convert .py to .ipynb, then execute with papermill
+  jupytext --to ipynb scripts/qc_barcode_align.py -o /tmp/qc_barcode_align.ipynb
+  papermill /tmp/qc_barcode_align.ipynb $OUTPUT_DIR/alignment_analysis.ipynb \
+    -p input_dir "$(pwd)/data/Source1/images/Batch1/images_aligned/barcoding/Plate1" \
+    -p output_dir "$(pwd)/$OUTPUT_DIR" \
+    -p numcycles 3 \
+    -p shift_threshold 50.0 \
+    -p corr_threshold 0.9 \
+    -p rows 2 \
+    -p columns 2
+'
 ```
-
-**Note**: The alignment QC uses a two-stage architecture:
-
-- **Stage 1** (CSV generation): Deterministic data extraction, batch-friendly
-- **Stage 2** (Visualization): Generates plots/reports from CSVs
-
-Use `--csv-only` to generate just the CSV files, then create custom visualizations with tools like Marimo notebooks or Jupyter. The CSVs serve as the stable API between processing and visualization.
 
 ### Troubleshooting
 

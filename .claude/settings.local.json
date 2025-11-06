@@ -60,7 +60,17 @@
       "Bash(/tmp/test_illum_constants.png )",
       "Read(//Users/shsingh/Documents/GitHub/nf/starrynight/**)",
       "WebFetch(domain:docs.seqera.io)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git log:*)",
+      "Bash(awk:*)",
+      "Bash(PLOT_QC=true PIPELINE_STEP=6_qc_align docker-compose run:*)",
+      "Bash(pandoc:*)",
+      "Bash(python scripts/qc_barcode_align.py:*)",
+      "Bash(data/Source1/images/Batch1/images_aligned/barcoding/Plate1 )",
+      "Bash(/tmp/test_qc_concise:*)",
+      "Bash(mv:*)",
+      "Bash(PIPELINE_STEP=6_qc_align docker-compose run:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": [],

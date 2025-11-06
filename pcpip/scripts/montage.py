@@ -28,10 +28,10 @@ Usage:
     pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python montage.py input_dir output.png --pattern '.*.npy$'
 
     # Cell Painting illumination only (exclude Cycle):
-    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/illum/Plate1 illum_montage.png --pattern '^(?!.*Cycle).*.npy$'
+    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/illum/Plate1 illum_cp_montage.png --pattern '^(?!.*Cycle).*.npy$'
 
     # Barcoding illumination only (must contain Cycle):
-    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/illum/Plate1 illum_montage.png --pattern '.*Cycle.*.npy$'
+    pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/illum/Plate1 illum_bc_montage.png --pattern '.*Cycle.*.npy$'
 
     # Segmentation check images:
     pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- python scripts/montage.py data/Source1/images/Batch1/images_segmentation/painting/Plate1 seg_montage.png --pattern '.*SegmentCheck.png$'

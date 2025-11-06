@@ -226,29 +226,7 @@ PIPELINE_STEP=7_qc_preprocess ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=8_qc_stitch ${COMPOSE_CMD} run --rm qc
 
 # === Local execution with Pixi (for interactive/custom use) ===
-# The examples below show how to run QC scripts locally without Docker
-# Useful for development, testing, or custom analysis
-
-# Example: Illumination QC montage
-pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
-  python scripts/montage.py \
-  data/Source1/images/Batch1/illum/Plate1 \
-  output_montage.png \
-  --pattern ".*Cycle.*.npy$"
-
-# Example: Stitching QC for Cell Painting
-pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
-  python scripts/montage.py \
-  data/Source1/images/Batch1/images_corrected_stitched_10X/painting/Plate1 \
-  data/Source1/workspace/qc_reports/4_stitching_cp/Plate1/montage.png \
-  --pattern ".*CorrDNA-Stitched\\.tiff$"
-
-# Example: Stitching QC for Barcoding
-pixi exec -c conda-forge --spec python=3.13 --spec numpy=2.3.3 --spec pillow=11.3.0 -- \
-  python scripts/montage.py \
-  data/Source1/images/Batch1/images_corrected_stitched_10X/barcoding/Plate1 \
-  data/Source1/workspace/qc_reports/8_stitching_bc/Plate1/montage.png \
-  --pattern ".*Cycle01_DNA-Stitched\\.tiff$"
+# For montage usage examples and pattern reference, see: scripts/montage.py docstring
 
 # Example: Alignment QC - Execute notebook with Papermill
 pixi exec -c conda-forge \

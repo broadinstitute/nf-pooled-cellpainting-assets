@@ -194,6 +194,14 @@ declare -A QC_CONFIG=(
   [6_qc_align,log]="6_qc_align_PLATE"
   [6_qc_align,extra_args]="--numcycles 3 --shift-threshold 50 --corr-threshold 0.9 --rows ${BARCODING_ROWS} --columns ${BARCODING_COLUMNS}"
 
+  # QC after Pipeline 7 - Barcode Preprocessing Analysis
+  [7_qc_preprocess,script]="notebooks/qc_barcode_preprocess.py"
+  [7_qc_preprocess,input]="images_corrected/barcoding/PLATE"
+  [7_qc_preprocess,output]="../../workspace/qc_reports/7_preprocessing/PLATE"
+  [7_qc_preprocess,output_type]="dir"  # Outputs multiple plots and text files
+  [7_qc_preprocess,log]="7_qc_preprocess_PLATE"
+  [7_qc_preprocess,extra_args]="--numcycles 3 --barcode-library-path ${METADATA_DIR}/Barcodes.csv --rows ${BARCODING_ROWS} --columns ${BARCODING_COLUMNS}"
+
   # QC after Pipeline 8 - Barcoding Stitching (10X preview images)
   [8_qc_stitch,script]="scripts/montage.py"
   [8_qc_stitch,input]="images_corrected_stitched_10X/barcoding/PLATE"
@@ -561,6 +569,15 @@ if should_run_step 7; then
   done
   wait
 fi
+
+# 7_qc_preprocess - QC for Barcode Preprocessing
+# Executes qc_barcode_preprocess.py as a Jupyter notebook using Papermill
+# Output: preprocessing_analysis.ipynb with all plots and results embedded
+if should_run_step 7_qc_preprocess; then
+  echo "Running QC for Pipeline 7: Barcode Preprocessing Analysis"
+  run_qc_check "7_qc_preprocess"
+fi
+wait
 
 # 8_BC_StitchCrop - Processes ALL wells found in barcoding directory
 if should_run_step 8; then

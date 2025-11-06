@@ -87,6 +87,7 @@ PIPELINE_STEP=5 ${COMPOSE_CMD} run --rm cellprofiler
 PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP="6,7" ${COMPOSE_CMD} run --rm cellprofiler
 PIPELINE_STEP=6_qc_align ${COMPOSE_CMD} run --rm qc
+PIPELINE_STEP=7_qc_preprocess ${COMPOSE_CMD} run --rm qc
 
 # (Podman only) Fix permissions for volume mounts
 [ "$COMPOSE_CMD" = "podman-compose" ] && sudo chmod -R 777 data/Source1/images/
@@ -154,6 +155,10 @@ flowchart TD
     PCP6 -.-> QC6["QC: Alignment Analysis
     Plots and metrics"]
 
+    PCP7 -.-> QC7["QC: Preprocessing Analysis
+    Library quality, barcode calling,
+    spatial distribution"]
+
     PCP8 -.-> QC8["QC: Stitching Montage
     Visual inspection"]
 
@@ -164,7 +169,7 @@ flowchart TD
 
     class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP7A,PCP8Y,PCP9,PCP6A cellprofiler
     class PCP4,PCP8,PCP8Z fiji
-    class QC1,QC3,QC4,QC5,QC6,QC8 qc
+    class QC1,QC3,QC4,QC5,QC6,QC7,QC8 qc
 ```
 
 ## Reference
@@ -206,6 +211,7 @@ The pipeline currently includes visual QC via montage generation at key processi
 - **4_qc_stitch**: Montage: painting stitched whole-well images (10X previews) after Pipeline 4
 - **8_qc_stitch**: Montage: barcoding stitched whole-well images (10X previews) after Pipeline 8
 - **6_qc_align**: Notebook: Barcode alignment analysis after Pipeline 6
+- **7_qc_preprocess**: Notebook: Barcode preprocessing analysis after Pipeline 7
 
 #### Running QC Steps
 
@@ -218,9 +224,13 @@ PIPELINE_STEP=5_qc_illum ${COMPOSE_CMD} run --rm qc
 PIPELINE_STEP=8_qc_stitch ${COMPOSE_CMD} run --rm qc
 
 # Run quantitative QC analysis via Docker/Podman
-# Executes Jupyter notebook via Papermill
-# Generates: qc_barcode_align_analysis.ipynb + 5 plots
+# Executes Jupyter notebooks via Papermill
+
+# Pipeline 6: Alignment analysis (5 plots)
 PIPELINE_STEP=6_qc_align ${COMPOSE_CMD} run --rm qc
+
+# Pipeline 7: Barcode preprocessing analysis (8+ plots + text summaries)
+PIPELINE_STEP=7_qc_preprocess ${COMPOSE_CMD} run --rm qc
 
 # === Local execution with Pixi (for interactive/custom use) ===
 # The examples below show how to run QC scripts locally without Docker
@@ -267,6 +277,29 @@ bash -c '
     -p numcycles 3 \
     -p shift_threshold 50.0 \
     -p corr_threshold 0.9 \
+    -p rows 2 \
+    -p columns 2
+'
+
+# Example: Barcode Preprocessing QC - Execute notebook with Papermill
+pixi exec -c conda-forge \
+  --spec python=3.13 \
+  --spec pandas=2.3.3 \
+  --spec seaborn=0.13.2 \
+  --spec matplotlib=3.10.0 \
+  --spec papermill=2.6.0 \
+  --spec jupytext=1.16.4 \
+  --spec ipykernel=6.29.5 -- \
+bash -c '
+  OUTPUT_DIR="data/Source1/workspace/qc_reports/7_preprocessing/Plate1"
+  mkdir -p $OUTPUT_DIR
+  # Convert .py to .ipynb, then execute with papermill
+  jupytext --to ipynb notebooks/qc_barcode_preprocess.py -o /tmp/qc_barcode_preprocess.ipynb
+  papermill /tmp/qc_barcode_preprocess.ipynb $OUTPUT_DIR/preprocessing_analysis.ipynb \
+    -p input_dir "$(pwd)/data/Source1/images/Batch1/images_corrected/barcoding/Plate1" \
+    -p output_dir "$(pwd)/$OUTPUT_DIR" \
+    -p barcode_library_path "$(pwd)/data/Source1/workspace/metadata/Barcodes.csv" \
+    -p numcycles 3 \
     -p rows 2 \
     -p columns 2
 '

@@ -40,7 +40,7 @@ import matplotlib.pyplot as plt
 
 # Analysis parameters
 numcycles = 3
-imperwell = 4  # Will be auto-detected from data if this default is used
+imperwell = None  # Will be auto-detected from data if None
 shift_threshold = 50.0
 corr_threshold = 0.9
 
@@ -61,7 +61,7 @@ Path(output_dir).mkdir(parents=True, exist_ok=True)
 
 print("Configuration:")
 print(f"  numcycles: {numcycles}")
-print(f"  imperwell: {imperwell}")
+print(f"  imperwell: {imperwell if imperwell is not None else 'auto-detect'}")
 print(f"  shift_threshold: {shift_threshold}")
 print(f"  corr_threshold: {corr_threshold}")
 print(f"  input_dir: {input_dir}")
@@ -195,8 +195,8 @@ df_image = merge_csvs(
 
 print(f"Loaded {len(df_image)} rows")
 
-# Auto-detect imperwell if not already set
-if imperwell == 4:  # Default value
+# Auto-detect imperwell if not set
+if imperwell is None:
     imperwell = df_image["Metadata_Site"].max() + 1
     print(f"Auto-detected imperwell: {imperwell}")
 

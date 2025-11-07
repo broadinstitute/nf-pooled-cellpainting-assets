@@ -59,6 +59,9 @@ row_widths = None  # Example: [5, 11, 17, 19, 23, 25, 27, 29, ...]
 # Set to False for production pipelines (always regenerate from source)
 use_cache = True
 
+# %% [markdown]
+# **Portable mode**: Download notebook + `cached_barcode_foci.parquet` + `Barcodes.csv`, set `output_dir = "."`, run with `use_cache = True`
+
 # %%
 # Process parameters and create output directory
 Path(output_dir).mkdir(parents=True, exist_ok=True)

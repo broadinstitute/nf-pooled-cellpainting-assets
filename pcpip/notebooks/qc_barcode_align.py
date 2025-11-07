@@ -16,8 +16,6 @@
 #
 # Analyzes alignment quality between barcoding cycles by examining pixel shifts
 # and correlation scores from Pipeline 6 outputs.
-#
-# Based on the original PCPIP notebook by Erin Weisbart.
 
 # %% [markdown]
 # ## Setup and Configuration
@@ -61,7 +59,7 @@ row_widths = None  # Example: [5, 11, 17, 19, 23, 25, 27, 29, ...]
 use_cache = True
 
 # %% [markdown]
-# **For portable mode**: 
+# **For portable mode**:
 # - Download notebook and `cached_alignment_data.parquet`
 # - set `use_cache = True`
 # - set `output_dir = "."` in the cell above (input_dir will be ignored when using cache)

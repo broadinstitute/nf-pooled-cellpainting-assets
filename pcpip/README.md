@@ -260,7 +260,8 @@ pixi exec -c conda-forge \
   --spec matplotlib=3.10.0 \
   --spec papermill=2.6.0 \
   --spec jupytext=1.16.4 \
-  --spec ipykernel=6.29.5 -- \
+  --spec ipykernel=6.29.5 \
+  --spec pyarrow=22.0.0 -- \
 bash -c '
   OUTPUT_DIR="data/Source1/workspace/qc_reports/7_preprocessing/Plate1"
   mkdir -p $OUTPUT_DIR

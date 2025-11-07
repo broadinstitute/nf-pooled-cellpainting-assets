@@ -424,6 +424,7 @@ papermill ${tmp_notebook} ${output_notebook} \
 -p output_dir \"${output_dir}\" \
 -p use_cache false \
 ${papermill_params} && \
+jupyter nbconvert ${output_notebook} --to html --output ${notebook_basename}_analysis.html && \
 rm -f ${tmp_notebook}"
 
     echo "Papermill command: $cmd"

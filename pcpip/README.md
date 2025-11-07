@@ -236,7 +236,9 @@ pixi exec -c conda-forge \
   --spec matplotlib=3.10.0 \
   --spec papermill=2.6.0 \
   --spec jupytext=1.16.4 \
-  --spec ipykernel=6.29.5 -- \
+  --spec ipykernel=6.29.5 \
+  --spec nbconvert=7.16.4 \
+  --spec pyarrow=22.0.0 -- \
 bash -c '
   OUTPUT_DIR="data/Source1/workspace/qc_reports/6_alignment/Plate1"
   mkdir -p $OUTPUT_DIR
@@ -250,6 +252,8 @@ bash -c '
     -p corr_threshold 0.9 \
     -p rows 2 \
     -p columns 2
+  # Convert to HTML for browser viewing
+  jupyter nbconvert $OUTPUT_DIR/alignment_analysis.ipynb --to html
 '
 
 # Example: Barcode Preprocessing QC - Execute notebook with Papermill
@@ -261,6 +265,7 @@ pixi exec -c conda-forge \
   --spec papermill=2.6.0 \
   --spec jupytext=1.16.4 \
   --spec ipykernel=6.29.5 \
+  --spec nbconvert=7.16.4 \
   --spec pyarrow=22.0.0 -- \
 bash -c '
   OUTPUT_DIR="data/Source1/workspace/qc_reports/7_preprocessing/Plate1"
@@ -274,6 +279,8 @@ bash -c '
     -p numcycles 3 \
     -p rows 2 \
     -p columns 2
+  # Convert to HTML for browser viewing
+  jupyter nbconvert $OUTPUT_DIR/preprocessing_analysis.ipynb --to html
 '
 
 # Note: QC notebooks cache data as parquet files for fast interactive re-runs.
@@ -323,7 +330,7 @@ ${COMPOSE_CMD} run --rm \
 
 Go to <https://seqera.io/containers/>, use only `conda-forge` as the source (on the left), and select the packages you need
 
-For example, building it out like this <https://seqera.io/containers/?packages=conda-forge::pandas=2.3.3+conda-forge::pip=25.2+conda-forge::pyarrow=22.0.0+conda-forge::seaborn=0.13.2+conda-forge::pillow=12.0.0+conda-forge::ipykernel=7.1.0+conda-forge::papermill=2.6.0+conda-forge::python=3.13.9+conda-forge::jupytext=1.18.1> will create the image `community.wave.seqera.io/library/ipykernel_jupytext_pandas_papermill_pyarrow:74e6f9f9f4da4981`, with the build page <https://wave.seqera.io/view/builds/bd-74e6f9f9f4da4981_1>
+For example, building it out like this (the page will take a minute to fully load) <https://seqera.io/containers/?packages=conda-forge::pandas=2.3.3+conda-forge::pip=25.2+conda-forge::pyarrow=22.0.0+conda-forge::seaborn=0.13.2+conda-forge::pillow=12.0.0+conda-forge::ipykernel=7.1.0+conda-forge::papermill=2.6.0+conda-forge::python=3.13.9+conda-forge::jupytext=1.18.1+conda-forge::nbconvert=7.16.6> will create the image `community.wave.seqera.io/library/ipykernel_jupytext_nbconvert_pandas_pruned:c397cee54f4ab064`, with the build page <https://wave.seqera.io/view/builds/bd-c397cee54f4ab064_1>
 
 - Use Python <3.14 because of some compatibility issues.
 - `jupytext` defaults to `master`; use the latest version instead.

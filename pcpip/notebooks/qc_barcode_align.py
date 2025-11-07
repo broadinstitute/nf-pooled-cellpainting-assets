@@ -243,7 +243,7 @@ print(f"  Cycle01 correlations: {len(df_corr_crop)} rows")
 # %% [markdown]
 # ## Pixel Shifts Analysis
 #
-# ### Plot 1: Pixels shifted to align each cycle to Cycle01 (no axis limits)
+# ### Pixels shifted to align each cycle to Cycle01 (no axis limits)
 
 # %%
 sns.catplot(
@@ -260,7 +260,7 @@ plt.savefig(
 plt.show()
 
 # %% [markdown]
-# ### Plot 2: Pixels shifted to align each cycle to Cycle01 (x axis limited to -200, 200)
+# ### Pixels shifted to align each cycle to Cycle01 (x axis limited to a range)
 
 # %%
 g = sns.catplot(
@@ -294,7 +294,7 @@ for well in temp["Metadata_Well"].unique():
     )
 
 # %% [markdown]
-# ### Plot 3: Spatial distribution of large shifts
+# ### Spatial distribution of large shifts
 #
 # Plot size of shift by location, ignoring shifts >200
 
@@ -336,7 +336,7 @@ else:
 # %% [markdown]
 # ## Correlation Analysis
 #
-# ### Plot 4: DAPI correlations after alignment (all pairwise comparisons)
+# ### DAPI correlations after alignment (all pairwise comparisons)
 #
 # Need all points to be better than red line
 
@@ -357,7 +357,7 @@ plt.savefig(
 plt.show()
 
 # %% [markdown]
-# ### Plot 5: DAPI correlations after alignment (only correlations to Cycle01)
+# ### DAPI correlations after alignment (only correlations to Cycle01)
 #
 # Need all points to be better than red line
 
@@ -412,8 +412,3 @@ print(
 )
 
 df_shift.loc[df_shift["value"] > 100].sort_values(by="value", ascending=False).head(20)
-
-# %% [markdown]
-# ## Analysis Complete
-#
-# All plots have been saved to the output directory.

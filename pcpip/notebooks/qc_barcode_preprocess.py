@@ -62,8 +62,8 @@ use_cache = True
 # %% [markdown]
 # **For portable mode**: 
 # - Download notebook and `cached_alignment_data.parquet`
-# - set `output_dir = "."` in the cell above
-# - run with `use_cache = True`
+# - set `use_cache = True`
+# - set `output_dir = "."` in the cell above (input_dir will be ignored when using cache)
 
 # %%
 # Process parameters and create output directory

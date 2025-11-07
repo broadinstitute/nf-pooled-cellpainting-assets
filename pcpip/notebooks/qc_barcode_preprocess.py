@@ -60,10 +60,10 @@ row_widths = None  # Example: [5, 11, 17, 19, 23, 25, 27, 29, ...]
 use_cache = True
 
 # %% [markdown]
-# **For portable mode**: 
-# - Download notebook and `cached_alignment_data.parquet`
+# **For portable mode**:
+# - Download notebook, `cached_barcode_foci.parquet`, and `Barcodes.csv`
 # - set `use_cache = True`
-# - set `output_dir = "."` in the cell above (input_dir will be ignored when using cache)
+# - set `output_dir = "."` and `barcode_library_path = "./Barcodes.csv"` in the cell above (input_dir will be ignored when using cache)
 
 # %%
 # Process parameters and create output directory

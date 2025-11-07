@@ -13,14 +13,6 @@
 
 # %% [markdown]
 # # Pipeline 7 QC: Barcode Preprocessing Analysis
-#
-# Analyzes barcode library composition, calling quality, and spatial distribution
-# from Pipeline 7 preprocessing outputs.
-#
-# Based on the original PCPIP notebook by Erin Weisbart.
-
-# %% [markdown]
-# ## Setup and Configuration
 
 # %%
 import os
@@ -34,36 +26,42 @@ import matplotlib.pyplot as plt
 
 # %% tags=["parameters"]
 # PAPERMILL PARAMETERS
-# This cell is tagged as "parameters" for Papermill injection
-# When running with papermill, these values will be overridden
-# When running interactively, edit these defaults directly
-
-# Analysis parameters
-numcycles = 3
-imperwell = None  # Will be auto-detected from data if None
-
-# Input/output paths (edit these for interactive use)
+# Set variables
+numcycles = 12
+imperwell = 320
 input_dir = "../data/Source1/images/Batch1/images_corrected/barcoding/Plate1"
 output_dir = "../data/Source1/workspace/qc_reports/7_preprocessing/Plate1"
 barcode_library_path = "../data/Source1/workspace/metadata/Barcodes.csv"
+row_widths = [
+    4,
+    8,
+    12,
+    14,
+    16,
+    18,
+    18,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    18,
+    18,
+    16,
+    14,
+    12,
+    8,
+    4,
+]
 
-# Acquisition geometry for spatial plot (optional)
-# For square: set both rows and columns
-# For circular: set row_widths as comma-separated list
-rows = 2
-columns = 2
-row_widths = None  # Example: [5, 11, 17, 19, 23, 25, 27, 29, ...]
+# Geometry override (optional - set rows/columns for square, or leave None for circular)
+rows = None
+columns = None
 
 # Cache control
-# Set to True for interactive use (fast re-runs with cached data)
-# Set to False for production pipelines (always regenerate from source)
 use_cache = True
-
-# %% [markdown]
-# **For portable mode**:
-# - Download notebook, `cached_barcode_foci.parquet`, and `Barcodes.csv`
-# - set `use_cache = True`
-# - set `output_dir = "."` and `barcode_library_path = "./Barcodes.csv"` in the cell above (input_dir will be ignored when using cache)
 
 # %%
 # Process parameters and create output directory
@@ -71,7 +69,7 @@ Path(output_dir).mkdir(parents=True, exist_ok=True)
 
 print("Configuration:")
 print(f"  numcycles: {numcycles}")
-print(f"  imperwell: {imperwell if imperwell is not None else 'auto-detect'}")
+print(f"  imperwell: {imperwell}")
 print(f"  input_dir: {input_dir}")
 print(f"  output_dir: {output_dir}")
 print(f"  barcode_library_path: {barcode_library_path}")
@@ -81,52 +79,10 @@ elif row_widths:
     print(f"  geometry: circular with {len(row_widths)} rows")
 
 # %% [markdown]
-# ## Helper Functions
-
-
-# %%
-def merge_csvs(csvfolder, filename, column_list=None):
-    """
-    Merge CSV files from multiple subdirectories.
-
-    Original function from Erin's notebook - handles well-based directory structure.
-    """
-    df_dict = {}
-    count = 0
-    folderlist = os.listdir(csvfolder)
-    print(count, datetime.datetime.ctime(datetime.datetime.now()))
-    for eachfolder in folderlist:
-        if os.path.isfile(os.path.join(csvfolder, eachfolder, filename)):
-            if not column_list:
-                df_dict[eachfolder] = pd.read_csv(
-                    os.path.join(csvfolder, eachfolder, filename), index_col=False
-                )
-            else:
-                df_dict[eachfolder] = pd.read_csv(
-                    os.path.join(csvfolder, eachfolder, filename),
-                    index_col=False,
-                    usecols=column_list,
-                )
-            count += 1
-            if count % 500 == 0:
-                print(count, datetime.datetime.ctime(datetime.datetime.now()))
-    print(count, datetime.datetime.ctime(datetime.datetime.now()))
-    df_merged = pd.concat(df_dict, ignore_index=True)
-    print("done concatenating at", datetime.datetime.ctime(datetime.datetime.now()))
-
-    return df_merged
-
-
-# %% [markdown]
-# ## sgRNA Library Analysis
+# ## sgRNA library
 
 # %%
-print(f"Loading barcode library from: {barcode_library_path}")
 bc_df = pd.read_csv(barcode_library_path)
-
-# Check for expected columns (handle both 'Gene' and 'gene_symbol')
-if "sgRNA" not in bc_df.columns:
-    raise ValueError("Barcode library must contain 'sgRNA' column")
 
 # Normalize gene column name to 'Gene'
 if "gene_symbol" in bc_df.columns:
@@ -137,14 +93,9 @@ elif "Gene" not in bc_df.columns:
 gene_col = "Gene"
 barcode_col = "sgRNA"
 
-print(len(bc_df), "total barcodes")
-print(f"Library columns: {bc_df.columns.tolist()}")
-
-# %% [markdown]
-# ### Homopolymeric Repeat Detection
-
 # %%
-# Describe barcodes - check for homopolymeric repeats
+# Describe barcodes
+print(len(bc_df), "total barcodes")
 rep5 = sum(
     [
         any(repeat in read for repeat in ["AAAAA", "CCCCC", "GGGGG", "TTTTT"])
@@ -168,19 +119,19 @@ print(rep5, "barcodes with 5 repeats", rep5 / len(bc_df), "% 5 repeats")
 print(rep6, "barcodes with 6 repeats", rep6 / len(bc_df), "% 6 repeats")
 print(rep7, "barcodes with 7 repeats", rep7 / len(bc_df), "% 7 repeats")
 
-rep5_10nt = sum(
+rep5 = sum(
     [
         any(repeat in read[:10] for repeat in ["AAAAA", "CCCCC", "GGGGG", "TTTTT"])
         for read in bc_df["sgRNA"]
     ]
 )
-rep6_10nt = sum(
+rep6 = sum(
     [
         any(repeat in read[:10] for repeat in ["AAAAAA", "CCCCCC", "GGGGGG", "TTTTTT"])
         for read in bc_df["sgRNA"]
     ]
 )
-rep7_10nt = sum(
+rep7 = sum(
     [
         any(
             repeat in read[:10]
@@ -190,34 +141,9 @@ rep7_10nt = sum(
     ]
 )
 print("For 10 nt read")
-print(rep5_10nt, "barcodes with 5 repeats", rep5_10nt / len(bc_df), "% 5 repeats")
-print(rep6_10nt, "barcodes with 6 repeats", rep6_10nt / len(bc_df), "% 6 repeats")
-print(rep7_10nt, "barcodes with 7 repeats", rep7_10nt / len(bc_df), "% 7 repeats")
-
-# Save repeat statistics
-with open(Path(output_dir) / "library_repeat_stats.txt", "w") as f:
-    f.write("Homopolymeric Repeat Analysis\n")
-    f.write("=" * 50 + "\n\n")
-    f.write(f"Total barcodes in library: {len(bc_df)}\n\n")
-    f.write("For full read:\n")
-    f.write(f"  5-mer repeats: {rep5} barcodes ({rep5 / len(bc_df) * 100:.2f}%)\n")
-    f.write(f"  6-mer repeats: {rep6} barcodes ({rep6 / len(bc_df) * 100:.2f}%)\n")
-    f.write(f"  7-mer repeats: {rep7} barcodes ({rep7 / len(bc_df) * 100:.2f}%)\n\n")
-    f.write("For 10 nt read:\n")
-    f.write(
-        f"  5-mer repeats: {rep5_10nt} barcodes ({rep5_10nt / len(bc_df) * 100:.2f}%)\n"
-    )
-    f.write(
-        f"  6-mer repeats: {rep6_10nt} barcodes ({rep6_10nt / len(bc_df) * 100:.2f}%)\n"
-    )
-    f.write(
-        f"  7-mer repeats: {rep7_10nt} barcodes ({rep7_10nt / len(bc_df) * 100:.2f}%)\n"
-    )
-
-print(f"\nRepeat statistics saved to: {Path(output_dir) / 'library_repeat_stats.txt'}")
-
-# %% [markdown]
-# ### Nucleotide Frequency by Cycle (Library)
+print(rep5, "barcodes with 5 repeats", rep5 / len(bc_df), "% 5 repeats")
+print(rep6, "barcodes with 6 repeats", rep6 / len(bc_df), "% 6 repeats")
+print(rep7, "barcodes with 7 repeats", rep7 / len(bc_df), "% 7 repeats")
 
 # %%
 dflist = []
@@ -268,12 +194,48 @@ plt.show()
 # %% [markdown]
 # ## Barcode Calling
 
-# %% [markdown]
-# ### Load Barcode Calling Data from Pipeline 7
+# %%
+# Useful function for merging CSVs contained in folders within one folder
+
+
+def merge_csvs(csvfolder, filename, column_list=None):
+    """csvfolder is a path to a folder
+    Iterates over all of the folders inside of that CSVfolder
+    Merges the CSVs that match the filename into one dataframe
+    If a column list is passed, it keeps columns defined in the column list
+    Prints a time stamp every 500 csvs
+    Returns the merged dataframe
+    """
+
+    df_dict = {}
+    count = 0
+    folderlist = os.listdir(csvfolder)
+    print(count, datetime.datetime.ctime(datetime.datetime.now()))
+    for eachfolder in folderlist:
+        if os.path.isfile(os.path.join(csvfolder, eachfolder, filename)):
+            if not column_list:
+                df_dict[eachfolder] = pd.read_csv(
+                    os.path.join(csvfolder, eachfolder, filename), index_col=False
+                )
+            else:
+                df_dict[eachfolder] = pd.read_csv(
+                    os.path.join(csvfolder, eachfolder, filename),
+                    index_col=False,
+                    usecols=column_list,
+                )
+            count += 1
+            if count % 500 == 0:
+                print(count, datetime.datetime.ctime(datetime.datetime.now()))
+    print(count, datetime.datetime.ctime(datetime.datetime.now()))
+    df_merged = pd.concat(df_dict, ignore_index=True)
+    print("done concatenating at", datetime.datetime.ctime(datetime.datetime.now()))
+
+    return df_merged
+
 
 # %%
-csvfolder = input_dir
-cache_file = Path(output_dir) / "cached_barcode_foci.parquet"
+# Merge Foci csvs
+# Run if csvs are in separate folders
 filename = "BarcodePreprocessing_Foci.csv"
 column_list = [
     "ImageNumber",
@@ -289,6 +251,9 @@ column_list = [
     "Barcode_MatchedTo_Score",
 ]
 
+csvfolder = input_dir
+cache_file = Path(output_dir) / "cached_barcode_foci.parquet"
+
 # Load data with caching support
 if use_cache and cache_file.exists():
     print(f"Loading cached data from: {cache_file}")
@@ -297,54 +262,31 @@ if use_cache and cache_file.exists():
 else:
     print(f"Loading data from: {csvfolder}")
     df_foci = merge_csvs(csvfolder, filename, column_list)
-
     print(f"Loaded {len(df_foci)} barcode foci")
 
     # Cache for future use
-    # Note: Only columns specified in column_list are loaded and cached
     print(f"Caching data to: {cache_file}")
     df_foci.to_parquet(cache_file, compression="gzip", index=False)
     print("Cache saved")
 
-print(f"Columns: {df_foci.columns.tolist()}")
-
-# Auto-detect imperwell if not set
-if imperwell is None:
-    imperwell = df_foci["Metadata_Site"].max() + 1
-    print(f"Auto-detected imperwell: {imperwell}")
-
-print("\nFirst few rows:")
-print(df_foci.head())
-
-# %% [markdown]
-# ### Perfect Match Statistics and Score Distribution
+# %%
+df_foci.head()
 
 # %%
-# Useful dataframe manipulations
+# useful dataframe manipulations
 df_foci.sort_values(by=["Metadata_Well_Value", "Metadata_Site"], inplace=True)
 df_foci["well-site"] = (
     df_foci["Metadata_Well"] + "-" + df_foci["Metadata_Site"].astype(str)
 )
 df_foci_well_groups = df_foci.groupby("Metadata_Well_Value")
 
-# Calculate perfect match percentage (dividing by scores > 0)
-perfect_count = sum(df_foci["Barcode_MatchedTo_Score"] == 1)
-matched_count = sum(df_foci["Barcode_MatchedTo_Score"] > 0)
-perfect_percent = perfect_count * 100.0 / matched_count
-
-print(f"{perfect_percent:.2f} percent perfect overall")
-print(f"{perfect_count} count perfect foci")
-
-# Save statistics
-with open(Path(output_dir) / "barcode_calling_stats.txt", "w") as f:
-    f.write("Barcode Calling Quality Statistics\n")
-    f.write("=" * 50 + "\n\n")
-    f.write(f"Total foci with matches: {matched_count}\n")
-    f.write(f"Perfect matches (score=1): {perfect_count} ({perfect_percent:.2f}%)\n")
-
-print(f"\nStatistics saved to: {Path(output_dir) / 'barcode_calling_stats.txt'}")
-
-# Overall score distribution
+print(
+    sum(df_foci["Barcode_MatchedTo_Score"] == 1)
+    * 100.0
+    / sum(df_foci["Barcode_MatchedTo_Score"] > 0),
+    " percent perfect overall",
+)
+print(f"{len(df_foci.loc[df_foci['Barcode_MatchedTo_Score'] == 1])} count perfect foci")
 sns.displot(df_foci["Barcode_MatchedTo_Score"], kde=False)
 plt.title("Barcode Match Score Distribution")
 plt.tight_layout()
@@ -353,19 +295,10 @@ plt.savefig(
 )
 plt.show()
 
-# %% [markdown]
-# ### Per-Well Score Distribution
-
 # %%
-# Per-well score distribution using displot with col parameter
-# Handle Metadata_Well_Value if it exists, otherwise use Metadata_Well
-col_var = (
-    "Metadata_Well_Value"
-    if "Metadata_Well_Value" in df_foci.columns
-    else "Metadata_Well"
+sns_displot = sns.displot(
+    df_foci, x="Barcode_MatchedTo_Score", col="Metadata_Well_Value", col_wrap=3
 )
-
-sns_displot = sns.displot(df_foci, x="Barcode_MatchedTo_Score", col=col_var, col_wrap=3)
 plt.tight_layout()
 plt.savefig(
     Path(output_dir) / "barcode_score_distribution_per_well.png",
@@ -374,13 +307,10 @@ plt.savefig(
 )
 plt.show()
 
-# %% [markdown]
-# ### Observed Barcode Repeat Check
-
 # %%
 readlist = df_foci["Barcode_BarcodeCalled"]
 print("% Reads with >4 repeat nucleotide calls")
-repeat_percent = (
+print(
     100
     * pd.Series(
         [
@@ -389,15 +319,12 @@ repeat_percent = (
         ]
     ).mean()
 )
-print(repeat_percent)
-
-# %% [markdown]
-# ### Spatial Quality Visualization
-#
-# Percent perfect barcodes by position
 
 # %%
-# Create position mapping if geometry is provided
+# Pos df
+# Creates x, y coordinates for plotting per-plate views.
+
+# Create position mapping based on geometry
 pos_df = None
 
 if rows and columns:
@@ -411,7 +338,7 @@ if rows and columns:
     pos_df = pd.DataFrame(pos_data)
 
 elif row_widths:
-    # Circular acquisition (from original notebook)
+    # Circular acquisition (original logic)
     print(f"Creating circular position mapping with {len(row_widths)} rows")
     max_width = max(row_widths)
     pos_dict = {}
@@ -437,14 +364,7 @@ elif row_widths:
     pos_df[["x_loc", "y_loc"]] = pd.DataFrame(
         pos_df["loc"].tolist(), index=pos_df.index
     )
-else:
-    print("No geometry provided - spatial plot will be skipped")
 
-if pos_df is not None:
-    print(f"Position mapping created for {len(pos_df)} sites")
-
-# %%
-# Create spatial plot if position mapping exists
 if pos_df is not None:
     # % Perfect by well
     df_foci_slice = df_foci.loc[
@@ -491,10 +411,7 @@ if pos_df is not None:
     plt.show()
     # note missing sites indicate that site has zero perfect barcodes
 else:
-    print("Skipping spatial plot - no geometry provided")
-
-# %% [markdown]
-# ### Per-Cycle Nucleotide Frequency (Observed)
+    print("No geometry provided - spatial plot skipped")
 
 # %%
 dflist = []
@@ -542,23 +459,16 @@ plt.savefig(
 )
 plt.show()
 
-# %% [markdown]
-# ### Mismatch Cycle Analysis
-
 
 # %%
 def returnbadcycle(query, target):
-    """Return the cycle (1-indexed) where query and target differ."""
     if pd.isna(query) or pd.isna(target):
         return None
-    min_len = min(len(query), len(target))
-    for x in range(min_len):
+    for x in range(len(query)):
         if query[x] != target[x]:
             return x + 1
-    return None
 
 
-# Filter for near-perfect matches using score threshold
 thresh = 1 - 1 / numcycles
 df_onemismatch = df_foci.query("1 > Barcode_MatchedTo_Score > .85").reset_index(
     drop=True
@@ -571,17 +481,9 @@ if len(df_onemismatch) > 0:
         ),
         axis=1,
     )
-
-    # Plot mismatch cycle distribution
-    # Use col parameter based on available column
-    col_var = (
-        "Metadata_Well"
-        if "Metadata_Well" in df_onemismatch.columns
-        else "Metadata_Plate"
-    )
     sns.catplot(
-        data=df_onemismatch, col=col_var, x="BadCycle", kind="count", col_wrap=3
-    )
+        data=df_onemismatch, col="Metadata_Well", x="BadCycle", kind="count", col_wrap=3
+    )  # row='Metadata_Plate'
     plt.suptitle("Distribution of Mismatch Cycles (Near-Perfect Matches)")
     plt.tight_layout()
     plt.savefig(
@@ -590,40 +492,22 @@ if len(df_onemismatch) > 0:
         bbox_inches="tight",
     )
     plt.show()
-
-    print("\nMismatch Analysis:")
-    print(f"  Total foci: {len(df_foci)}")
-    print(
-        f"  Near-perfect matches (score > 0.85): {len(df_onemismatch)} ({len(df_onemismatch) / len(df_foci) * 100:.2f}%)"
-    )
 else:
     print("No near-perfect mismatches found (all scores are either 1.0 or <= 0.85)")
-
-# %% [markdown]
-# ## Gene & Barcode Coverage Analysis
 
 # %%
 perfect_df = df_foci[df_foci["Barcode_MatchedTo_Score"] == 1]
 
-# Handle different column naming conventions
-gene_col_foci = (
-    "Barcode_MatchedTo_GeneCode"
-    if "Barcode_MatchedTo_GeneCode" in df_foci.columns
-    else "Barcode_MatchedTo_Gene"
-)
-
 print(f"The number of unique genes in the library is {len(bc_df[gene_col].unique())}")
 print(
-    f"Perfect barcodes are detected for {len(df_foci.loc[df_foci['Barcode_MatchedTo_Score'] == 1][gene_col_foci].unique())} genes\n"
+    f"Perfect barcodes are detected for {len(df_foci.loc[df_foci['Barcode_MatchedTo_Score'] == 1]['Barcode_MatchedTo_GeneCode'].unique())} genes\n"
 )
 print("The 10 most detected genes are:")
-gene_counts = (
-    df_foci.loc[df_foci["Barcode_MatchedTo_Score"] == 1][gene_col_foci]
-    .value_counts()
+print(
+    df_foci.loc[df_foci["Barcode_MatchedTo_Score"] == 1]
+    .Barcode_MatchedTo_GeneCode.value_counts()
     .head(n=10)
 )
-print(gene_counts)
-
 print(
     f"\nThe number of unique barcodes in the library is {len(bc_df[barcode_col].unique())}"
 )
@@ -631,33 +515,8 @@ print(
     f"Perfect barcodes are detected for {len(df_foci.loc[df_foci['Barcode_MatchedTo_Score'] == 1]['Barcode_MatchedTo_Barcode'].unique())} of them\n"
 )
 print("The 10 most detected barcodes are:")
-barcode_counts = (
-    df_foci.loc[df_foci["Barcode_MatchedTo_Score"] == 1]["Barcode_MatchedTo_Barcode"]
-    .value_counts()
+print(
+    df_foci.loc[df_foci["Barcode_MatchedTo_Score"] == 1]
+    .Barcode_MatchedTo_Barcode.value_counts()
     .head(n=10)
 )
-print(barcode_counts)
-
-# Save coverage statistics
-with open(Path(output_dir) / "coverage_stats.txt", "w") as f:
-    f.write("Gene & Barcode Coverage Statistics\n")
-    f.write("=" * 50 + "\n\n")
-    f.write(f"Total genes in library: {len(bc_df[gene_col].unique())}\n")
-    f.write(
-        f"Genes detected (perfect matches): {len(df_foci.loc[df_foci['Barcode_MatchedTo_Score'] == 1][gene_col_foci].unique())}\n\n"
-    )
-    f.write(f"Total barcodes in library: {len(bc_df[barcode_col].unique())}\n")
-    f.write(
-        f"Barcodes detected (perfect matches): {len(df_foci.loc[df_foci['Barcode_MatchedTo_Score'] == 1]['Barcode_MatchedTo_Barcode'].unique())}\n\n"
-    )
-    f.write("\nTop 10 Most Detected Genes:\n")
-    f.write(gene_counts.to_string())
-    f.write("\n\nTop 10 Most Detected Barcodes:\n")
-    f.write(barcode_counts.to_string())
-
-print(f"\nCoverage statistics saved to: {Path(output_dir) / 'coverage_stats.txt'}")
-
-# %% [markdown]
-# ## Analysis Complete
-#
-# All plots and statistics have been saved to the output directory.

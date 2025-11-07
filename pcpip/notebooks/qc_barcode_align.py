@@ -61,7 +61,10 @@ row_widths = None  # Example: [5, 11, 17, 19, 23, 25, 27, 29, ...]
 use_cache = True
 
 # %% [markdown]
-# **Portable mode**: Download notebook + `cached_alignment_data.parquet`, set `output_dir = "."`, run with `use_cache = True`
+# **For portable mode**: 
+# - Download notebook and `cached_alignment_data.parquet`
+# - set `output_dir = "."` in the cell above
+# - run with `use_cache = True`
 
 # %%
 # Process parameters and create output directory

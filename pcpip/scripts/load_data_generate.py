@@ -268,7 +268,7 @@ def pipeline7(samplesheet_df, base_path=None):
     for (well, site), group in df.groupby(["well", "site"]):
         plate = group.iloc[0]["plate"]
         channels = group.iloc[0]["channels"].split(",")
-        output_dir = f"{base_path}/images_aligned/barcoding/{plate}/{plate}-{well}-{site}/"  # Add trailing slash
+        output_dir = f"{base_path}/images_aligned/barcoding/{plate}/{plate}-{well}/"  # Well-level dir (Pipeline 6 groups by well)
 
         data = {
             "Metadata_Plate": plate,

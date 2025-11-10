@@ -72,7 +72,7 @@ declare -A PIPELINE_CONFIG=(
   [2,output]="images_corrected/painting/PLATE/PLATE-WELL-SITE"
   [3,output]="images_segmentation/painting/PLATE/PLATE-WELL"
   [5,output]="illum/PLATE"
-  [6,output]="images_aligned/barcoding/PLATE/PLATE-WELL-SITE"
+  [6,output]="images_aligned/barcoding/PLATE/PLATE-WELL"
   [7,output]="images_corrected/barcoding/PLATE/PLATE-WELL-SITE"
   [9,output]="../../workspace/analysis/Batch1/PLATE-WELL-SITE"
 
@@ -81,7 +81,7 @@ declare -A PIPELINE_CONFIG=(
   [2,log]="pipeline2_PLATE_WELL"
   [3,log]="pipeline3_PLATE_WELL"
   [5,log]="pipeline5_PLATE_CYCLE"
-  [6,log]="pipeline6_PLATE_WELL_SITE"
+  [6,log]="pipeline6_PLATE_WELL"
   [7,log]="pipeline7_PLATE_WELL_SITE"
   [9,log]="pipeline9_PLATE_WELL_SITE"
 
@@ -90,7 +90,7 @@ declare -A PIPELINE_CONFIG=(
   [2,group]="Metadata_Plate=PLATE,Metadata_Well=WELL,Metadata_Site=SITE"
   [3,group]="Metadata_Plate=PLATE,Metadata_Well=WELL"
   [5,group]="Metadata_Plate=PLATE,Metadata_Cycle=CYCLE"
-  [6,group]="Metadata_Plate=PLATE,Metadata_Well=WELL,Metadata_Site=SITE"
+  [6,group]="Metadata_Plate=PLATE,Metadata_Well=WELL"
   [7,group]="Metadata_Plate=PLATE,Metadata_Well=WELL,Metadata_Site=SITE"
   [9,group]="Metadata_Plate=PLATE,Metadata_Well=WELL,Metadata_Site=SITE"
 
@@ -99,7 +99,7 @@ declare -A PIPELINE_CONFIG=(
   [2,params]="PLATE,WELL"
   [3,params]="PLATE,WELL"
   [5,params]="PLATE,CYCLE"
-  [6,params]="PLATE,WELL,SITE"
+  [6,params]="PLATE,WELL"
   [7,params]="PLATE,WELL,SITE"
   [9,params]="PLATE,WELL,SITE"
 
@@ -544,9 +544,7 @@ if should_run_step 6; then
   echo "Running Pipeline 6: BC_Apply_Illum"
   PIPELINE=6
   for WELL in "${WELLS[@]}"; do
-      for SITE in "${SITES[@]}"; do
-          run_pipeline $PIPELINE
-      done
+    run_pipeline $PIPELINE
   done
   wait
 fi

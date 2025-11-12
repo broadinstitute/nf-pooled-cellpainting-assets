@@ -78,7 +78,7 @@ declare -A PIPELINE_CONFIG=(
 
   # Log filename patterns
   [1,log]="pipeline1_PLATE"
-  [2,log]="pipeline2_PLATE_WELL"
+  [2,log]="pipeline2_PLATE_WELL_SITE"
   [3,log]="pipeline3_PLATE_WELL"
   [5,log]="pipeline5_PLATE_CYCLE"
   [6,log]="pipeline6_PLATE_WELL"

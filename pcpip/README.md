@@ -8,7 +8,7 @@ This pipeline uses three specialized Docker containers:
 
 - **cellprofiler**: Runs CellProfiler pipelines (1-3, 5-7, 9)
 - **fiji**: Runs ImageJ/Fiji stitching (4, 8)
-- **qc**: Runs QC analysis - montages (1_qc_illum, 3_qc_seg, 4_qc_stitch, 5_qc_illum, 8_qc_stitch) and Jupyter notebooks (6_qc_align)
+- **qc**: Runs QC analysis (montages and notebooks)
 
 Each container is called with `PIPELINE_STEP` to specify what to run.
 
@@ -102,7 +102,7 @@ PIPELINE_STEP=9 ${COMPOSE_CMD} run --rm cellprofiler
 
 ```mermaid
 flowchart TD
-    %% Main pipelines with detailed descriptions
+    %% Cell Painting Track
     subgraph "Cell Painting Track"
         PCP1["PCP-1-CP-IllumCorr
         Calculate illum functions"] -->
@@ -118,6 +118,18 @@ flowchart TD
         Crop into tiles"]
     end
 
+    %% Cell Painting QC
+    subgraph "CP QC"
+        QC1["QC: Illum Montage
+        Visual inspection"]
+        QC3["QC: Segmentation Montage
+        Visual inspection"]
+        QC4["QC: Stitching Montage
+        Visual inspection"]
+        QC1 ~~~ QC3 ~~~ QC4
+    end
+
+    %% Barcoding Track
     subgraph "Barcoding Track"
         PCP5["PCP-5-BC-IllumCorr
         Calculate illum functions"] -->
@@ -133,6 +145,29 @@ flowchart TD
         (ensure match to CP crops)"]
     end
 
+    %% Barcoding QC
+    subgraph "BC QC"
+        QC5["QC: Illum Montage
+        Visual inspection"]
+        QC6["QC: Alignment Analysis
+        Plots and metrics"]
+        QC7["QC: Preprocessing Analysis
+        Library quality, barcode calling,
+        spatial distribution"]
+        QC8["QC: Stitching Montage
+        Visual inspection"]
+        QC5 ~~~ QC6 ~~~ QC7 ~~~ QC8
+    end
+
+    %% Connections
+    PCP1 -.-> QC1
+    PCP3 -.-> QC3
+    PCP4 -.-> QC4
+    PCP5 -.-> QC5
+    PCP6 -.-> QC6
+    PCP7 -.-> QC7
+    PCP8 -.-> QC8
+
     PCP4 & PCP8 --> PCP9["PCP-9-Analysis
         Align CP & BC images
         Segment cells
@@ -140,35 +175,13 @@ flowchart TD
         Call barcodes
         Measure QC"]
 
-    PCP1 -.-> QC1["QC: Illum Montage
-    Visual inspection"]
-
-    PCP3 -.-> QC3["QC: Segmentation Montage
-    Visual inspection"]
-
-    PCP4 -.-> QC4["QC: Stitching Montage
-    Visual inspection"]
-
-    PCP5 -.-> QC5["QC: Illum Montage
-    Visual inspection"]
-
-    PCP6 -.-> QC6["QC: Alignment Analysis
-    Plots and metrics"]
-
-    PCP7 -.-> QC7["QC: Preprocessing Analysis
-    Library quality, barcode calling,
-    spatial distribution"]
-
-    PCP8 -.-> QC8["QC: Stitching Montage
-    Visual inspection"]
-
     %% Processing platforms
     classDef cellprofiler stroke:#7fa7d9,stroke-width:4px;
     classDef fiji stroke:#7fc9a6,stroke-width:4px;
     classDef qc stroke:#d9a97f,stroke-width:4px;
 
-    class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP7A,PCP8Y,PCP9,PCP6A cellprofiler
-    class PCP4,PCP8,PCP8Z fiji
+    class PCP1,PCP2,PCP3,PCP5,PCP6,PCP7,PCP9 cellprofiler
+    class PCP4,PCP8 fiji
     class QC1,QC3,QC4,QC5,QC6,QC7,QC8 qc
 ```
 
@@ -335,28 +348,6 @@ For example, building it out like this (the page will take a minute to fully loa
 - Use Python <3.14 because of some compatibility issues.
 - `jupytext` defaults to `master`; use the latest version instead.
 
-#### Validating Generated CSVs
-
-Reference LoadData CSVs exist in S3 fixtures as validation artifacts. These can be used to verify that generated CSVs are correct:
-
-```bash
-# Download fixture with reference CSVs
-FIXTURE=fix-s1
-aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ data/ --no-sign-request
-
-# Generate samplesheet and LoadData CSVs as usual
-uv run scripts/samplesheet_generate.py data/Source1/images/Batch1/images \
-  --output data/Source1/workspace/samplesheets/samplesheet1.csv \
-  --wells "A1"
-
-# Validate generated CSVs against reference CSVs
-uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv --validate
-
-# The --validate flag compares generated CSVs against reference files and reports matches/differences
-```
-
-**Note**: Reference CSVs are validation artifacts, not used by the pipeline itself. The pipeline always uses freshly generated CSVs.
-
 #### Creating and Uploading Cropped Input Datasets
 
 To create a pre-cropped input dataset for faster testing:
@@ -460,62 +451,3 @@ pixi exec --spec rclone -- rclone check \
 - Uses rclone's on-the-fly S3 config (`:s3,provider=AWS,region=us-east-1:`) for public bucket access
 - Excludes CellProfiler experiment CSVs which contain timestamps/metadata that vary between runs
 - The `--skip-links` flag ignores symbolic links
-
----
-
-### Legacy: Reference CSV Maintenance
-
-**Note**: This section documents legacy workflows for maintaining reference LoadData CSVs in S3 fixtures. These are only needed when updating S3 reference artifacts. Standard pipeline workflows do not use these scripts.
-
-#### CSV Transformation Scripts
-
-These scripts update the load_data CSV files to match the pipeline's output folder structure. After running these transformations, sync the updated files back to S3.
-
-```bash
-# Set your base directory
-BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
-
-# Function to safely run Python transformations in-place
-transform_csv() {
-    local pipeline_num=$1
-    uv run scripts/archive/load_data_transform_p${pipeline_num}.py \
-        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.csv \
-        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp
-    mv ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.tmp \
-        ${BASE_DIR}/load_data_pipeline${pipeline_num}_revised.csv
-}
-
-# Step 1: Apply sed to ALL original CSVs to create _revised versions
-for csv in ${BASE_DIR}/load_data_pipeline*.csv; do
-    if [[ ! "$csv" =~ _revised\.csv$ ]]; then
-        sed 's,Source1/Batch1,Source1/images/Batch1,g' "$csv" > "${csv%.csv}_revised.csv"
-    fi
-done
-
-# Step 2: Run Python transformations in-place on the _revised files
-transform_csv 3
-transform_csv 7
-transform_csv 9
-
-# Sync updated CSVs back to S3
-aws s3 sync data/Source1/workspace/load_data_csv/ s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/Source1/workspace/load_data_csv/ \
-  --exclude "*" \
-  --include "*_revised.csv"
-```
-
-#### File Existence Validation Scripts
-
-These scripts validate that files referenced in LoadData CSVs exist. Read-only, doesn't modify files.
-
-```bash
-# Validate files exist for input to Pipeline 9 (check for Well A1)
-# Run this after running Pipelines 1-8 to verify outputs before Pipeline 9
-BASE_DIR="data/Source1/workspace/load_data_csv/Batch1/Plate1_trimmed"
-duckdb -c "COPY (SELECT * FROM read_csv_auto('${BASE_DIR}/load_data_pipeline9_revised.csv') WHERE Metadata_Well = 'A1') TO '/tmp/load_data_pipeline9_revised_A1.csv' (FORMAT CSV, HEADER);"
-uv run scripts/archive/load_data_check.py /tmp/load_data_pipeline9_revised_A1.csv
-# Expected output: Total: 64, Found: 64, Missing: 0
-
-# Check any CSV for file existence
-uv run scripts/archive/load_data_check.py ${BASE_DIR}/load_data_pipeline3_revised.csv
-uv run scripts/archive/load_data_check.py ${BASE_DIR}/load_data_pipeline7_revised.csv
-```

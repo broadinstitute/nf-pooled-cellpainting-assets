@@ -477,7 +477,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--validate",
         action="store_true",
-        help="Compare generated CSVs against reference files",
+        help="Compare generated CSVs against reference files (primarily for maintainer regression testing)",
     )
     parser.add_argument(
         "--ref-path",

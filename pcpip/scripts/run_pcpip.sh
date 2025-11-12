@@ -94,15 +94,6 @@ declare -A PIPELINE_CONFIG=(
   [7,group]="Metadata_Plate=PLATE,Metadata_Well=WELL,Metadata_Site=SITE"
   [9,group]="Metadata_Plate=PLATE,Metadata_Well=WELL,Metadata_Site=SITE"
 
-  # Required parameters (comma-separated)
-  [1,params]="PLATE"
-  [2,params]="PLATE,WELL"
-  [3,params]="PLATE,WELL"
-  [5,params]="PLATE,CYCLE"
-  [6,params]="PLATE,WELL"
-  [7,params]="PLATE,WELL,SITE"
-  [9,params]="PLATE,WELL,SITE"
-
   # Needs metadata flag (true/false)
   [1,metadata]="false"
   [2,metadata]="false"
@@ -278,7 +269,6 @@ run_with_logging() {
 # Function to run a pipeline with the right parameters
 run_pipeline() {
   local pipeline=$1
-  local required_params=${PIPELINE_CONFIG[$pipeline,params]}
   local use_metadata=${PIPELINE_CONFIG[$pipeline,metadata]}
   local run_background=${PIPELINE_CONFIG[$pipeline,background]}
   local use_plugins=${PIPELINE_CONFIG[$pipeline,plugins]}

@@ -417,7 +417,14 @@ aws s3 sync data/logs/ s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXT
 
 To verify local pipeline outputs match the reference outputs on S3:
 
-**Note**: Fiji stitching (steps 4/8) may produce non-deterministic results (~1-2% of pixels with minor intensity differences). This is speculative but based on observed behavior. Consequently, all downstream outputs (stitched images, cropped tiles, and Pipeline 9 analysis) may differ slightly from S3 reference outputs even when inputs are identical. CellProfiler steps (1-3, 5-7) should match exactly.
+**Note on Stitching Non-Determinism**: Fiji stitching (steps 4/8) appears to produce non-deterministic results. Based on experiments running the same inputs multiple times (Nov 2025):
+
+- The Grid/Collection stitching algorithm with `compute_overlap` converges to different tile positions across runs
+- Even with identical tile positions, pixel blending produces different output values
+- ~0.01% of pixels differ with intensity variations up to 600 units (on uint16 scale)
+- Every run produces a unique output, even from byte-identical inputs
+
+Consequently, **perfect reproducibility is not currently possible** for stitched images (steps 4/8), cropped tiles, or Pipeline 9 analysis outputs. The root cause is unclear but may involve floating-point computation order or iterative optimization in the stitching algorithm. CellProfiler steps (1-3, 5-7) remain deterministic and should match exactly.
 
 ```bash
 # Set your fixture

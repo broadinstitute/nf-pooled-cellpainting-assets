@@ -65,6 +65,8 @@ uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samples
 # 5. (Optional) Crop images for faster processing
 # Overwrites originals - re-download from S3 to restore
 # Options: 25 (fastest), 50 (balanced), 75 (conservative)
+# Note: Uses LZW compression which produces different file encodings across runs,
+#       but pixel data remains identical (no impact on pipeline reproducibility)
 CROP_PERCENT=25 ${COMPOSE_CMD} run --rm cellprofiler python3 /app/scripts/crop_preprocess.py --fixture ${FIXTURE}
 
 # 6. (Podman only) Fix permissions for volume mounts
@@ -425,6 +427,8 @@ To verify local pipeline outputs match the reference outputs on S3:
 - Every run produces a unique output, even from byte-identical inputs
 
 Consequently, **perfect reproducibility is not currently possible** for stitched images (steps 4/8), cropped tiles, or Pipeline 9 analysis outputs. The root cause is unclear but may involve floating-point computation order or iterative optimization in the stitching algorithm. CellProfiler steps (1-3, 5-7) remain deterministic and should match exactly.
+
+**Note on LZW Compression**: If `crop_preprocess.py` was used, input images will show MD5 differences due to non-deterministic LZW compression encoding, but pixel data remains identical with no impact on pipeline outputs.
 
 ```bash
 # Set your fixture

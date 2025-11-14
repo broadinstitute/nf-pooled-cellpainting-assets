@@ -110,7 +110,7 @@ def restructure(source_dir, dest_dir, dry_run=True):
         return
 
     print(f"Found {len(tiff_files)} TIFF files")
-    print(f"Mode: {'DRY RUN (no changes)' if dry_run else 'EXECUTE (copying files)'}")
+    print(f"Mode: {'DRY RUN (no changes)' if dry_run else 'EXECUTE (moving files)'}")
     print()
 
     stats = {'success': 0, 'skipped': 0, 'error': 0}
@@ -144,7 +144,7 @@ def restructure(source_dir, dest_dir, dry_run=True):
         if not dry_run:
             try:
                 dest_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(file_path, dest_path)
+                shutil.move(file_path, dest_path)
                 stats['success'] += 1
             except Exception as e:
                 print(f"  ✗ Error: {e}")
@@ -157,13 +157,13 @@ def restructure(source_dir, dest_dir, dry_run=True):
     print("=" * 60)
     print("Summary:")
     print(f"  Total files: {len(tiff_files)}")
-    print(f"  {'Would copy' if dry_run else 'Copied'}: {stats['success']}")
+    print(f"  {'Would move' if dry_run else 'Moved'}: {stats['success']}")
     print(f"  Skipped: {stats['skipped']}")
     print(f"  Errors: {stats['error']}")
 
     if dry_run and stats['success'] > 0:
         print()
-        print("Run with --execute to actually copy files")
+        print("Run with --execute to actually move files")
 
 
 def main():

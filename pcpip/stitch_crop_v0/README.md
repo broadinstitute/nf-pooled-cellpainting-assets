@@ -160,7 +160,7 @@ python stitch_crop_v0/stitch_crop_v0_restructure.py \
 - Stitched: `StitchedPlate_Plate1_Well_A1_Site__CorrDNA.tiff` → `Plate1-A1-CorrDNA-Stitched.tiff`
 - Cropped: `CorrDNA/CorrDNA_Site_1.tiff` → `Plate_Plate1_Well_A1_Site_1_CorrDNA.tiff`
 
-Script copies files (preserves originals) and is idempotent (skips existing files).
+Script moves files (cleans up legacy structure) and is idempotent (skips existing files).
 
 ## Notes
 

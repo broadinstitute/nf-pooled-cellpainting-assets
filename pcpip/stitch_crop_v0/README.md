@@ -2,6 +2,8 @@
 
 Legacy Fiji-based stitching and cropping workflow.
 
+**Note:** This guide uses the **fix-s1** test data fixture (3 wells × 4 sites, 2×2 grid) for all examples. Commands and output file counts are specific to fix-s1 but the workflow is expected to apply to any dataset.
+
 ## Prerequisites
 
 - Docker with `cellprofiler/distributed-fiji:latest` image

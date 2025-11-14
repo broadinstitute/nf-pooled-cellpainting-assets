@@ -134,13 +134,6 @@ output/
 - **10X images**: Downsampled previews (160×160) for quick QC visualization
 - **Cropped tiles**: Regular grid of tiles (800×800, 4 per channel) for CellProfiler analysis
 
-## Notes
-
-- Script uses Fiji Grid/Collection stitching with computed overlap
-- Output dimensions depend on `SC_TILE_SIZE` and grid layout (2×2 default)
-- Barcoding track processes all cycles × channels (e.g., Cycle01-03 × A/C/G/T/DNA)
-- Same process applies to both painting and barcoding tracks
-
 ## Production Compatibility
 
 To match production `stitch_crop.py` output format, the following changes would be needed:

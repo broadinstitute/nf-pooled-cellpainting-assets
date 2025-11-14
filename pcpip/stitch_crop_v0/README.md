@@ -134,13 +134,37 @@ output/
 - **10X images**: Downsampled previews (160×160) for quick QC visualization
 - **Cropped tiles**: Regular grid of tiles (800×800, 4 per channel) for CellProfiler analysis
 
-## Production Compatibility
+### Step 3: Restructure to Production Format (Optional)
 
-To match production `stitch_crop.py` output format, the following changes would be needed:
+Convert legacy output to production `stitch_crop.py` format for comparison or validation:
 
-- Add `plate` and `well` as explicit Jython script parameters (pass from `stitch_crop_v0_run.sh`)
-- Change directory structure: `output/{track}_{type}/` → `output/images_corrected_{type}/{track}/{plate}/`
-- Change stitched filenames: `StitchedPlate_Plate1_Well_A1_Site__CorrDNA.tiff` → `Plate1-A1-CorrDNA-Stitched.tiff`
-- Change cropped filenames: `CorrDNA/CorrDNA_Site_1.tiff` → `Plate_Plate1_Well_A1_Site_1_CorrDNA.tiff` (remove channel subdirectories)
+```bash
+cd pcpip/
 
-**Alternative:** Write a post-processing script that restructures the legacy output format to production format (preserves v0 script as reference)
+# Preview transformations (dry run)
+python stitch_crop_v0/stitch_crop_v0_restructure.py \
+  --source data/Source1/images/Batch1/output \
+  --dest data/Source1/images/Batch1 \
+  --dry-run
+
+# Execute conversion
+python stitch_crop_v0/stitch_crop_v0_restructure.py \
+  --source data/Source1/images/Batch1/output \
+  --dest data/Source1/images/Batch1 \
+  --execute
+```
+
+**Transformations:**
+
+- Directory: `output/{track}_{type}/` → `images_corrected_{type}/{track}/{plate}/`
+- Stitched: `StitchedPlate_Plate1_Well_A1_Site__CorrDNA.tiff` → `Plate1-A1-CorrDNA-Stitched.tiff`
+- Cropped: `CorrDNA/CorrDNA_Site_1.tiff` → `Plate_Plate1_Well_A1_Site_1_CorrDNA.tiff`
+
+Script copies files (preserves originals) and is idempotent (skips existing files).
+
+## Notes
+
+- Script uses Fiji Grid/Collection stitching with computed overlap
+- Output dimensions depend on `SC_TILE_SIZE` and grid layout (2×2 default)
+- Barcoding track processes all cycles × channels (e.g., Cycle01-03 × A/C/G/T/DNA)
+- Same process applies to both painting and barcoding tracks

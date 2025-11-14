@@ -11,7 +11,7 @@ Legacy Fiji-based stitching and cropping workflow.
 
 ### Step 1: Flatten Directory Structure
 
-The Fiji stitching script expects all images in a flat directory. Convert nested site folders to flat structure:
+The Fiji stitching script expects all images in a flat directory. The original script includes internal flattening when downloading from AWS, but for local file workflows (required for Nextflow integration), external flattening is necessary. Convert nested site folders to flat structure:
 
 ```bash
 cd pcpip/
@@ -55,18 +55,18 @@ cd pcpip/
 **Configure via environment variables:**
 
 ```bash
-# Minimal - just specify plate/well
-SC_PLATE=Plate1 SC_WELL=A1 ./scripts/stitch_crop_v0_run.sh
+# Painting track
+SC_PLATE=Plate1 SC_WELL=A1 SC_TRACK=painting ./stitch_crop_v0/stitch_crop_v0_run.sh
 
 # Barcoding track
-SC_PLATE=Plate1 SC_WELL=A1 SC_TRACK=barcoding ./scripts/stitch_crop_v0_run.sh
+SC_PLATE=Plate1 SC_WELL=A1 SC_TRACK=barcoding ./stitch_crop_v0/stitch_crop_v0_run.sh
 
 # Custom paths
 SC_HOST_DATA_DIR=/path/to/data \
 SC_WORKDIR=/app/data/Source1/images/Batch1 \
 SC_PLATE=Plate2 \
 SC_WELL=B3 \
-./scripts/stitch_crop_v0_run.sh
+./stitch_crop_v0/stitch_crop_v0_run.sh
 ```
 
 **Key environment variables:**
@@ -84,37 +84,45 @@ See script header for full list of configurable parameters.
 
 Output is created at `$SC_WORKDIR/output/` (default: `data/Source1/images/Batch1/output/`):
 
+### Painting Track (3 channels → 18 TIFFs)
+
 ```text
 output/
 ├── painting_stitched/          # Full-resolution stitched whole-well images
 │   └── Plate1-A1/
 │       ├── StitchedPlate_Plate1_Well_A1_Site__CorrDNA.tiff      (1600×1600)
 │       ├── StitchedPlate_Plate1_Well_A1_Site__CorrCHN2.tiff
-│       ├── StitchedPlate_Plate1_Well_A1_Site__CorrPhalloidin.tiff
-│       └── TileConfiguration*.txt                               (stitching logs)
-│
-├── painting_stitched_10X/      # Downsampled QC previews
-│   └── Plate1-A1/
-│       └── [3 downsampled TIFFs at 160×160]
-│
-└── painting_cropped/           # Cropped tiles for downstream analysis
+│       └── StitchedPlate_Plate1_Well_A1_Site__CorrPhalloidin.tiff
+├── painting_stitched_10X/      # Downsampled QC previews (160×160)
+└── painting_cropped/           # Cropped tiles for downstream analysis (800×800)
     └── Plate1-A1/
-        ├── CorrDNA/
-        │   ├── CorrDNA_Site_1.tiff                              (800×800)
-        │   ├── CorrDNA_Site_2.tiff
-        │   ├── CorrDNA_Site_3.tiff
-        │   └── CorrDNA_Site_4.tiff
-        ├── CorrCHN2/
-        │   └── [4 tiles per channel]
-        └── CorrPhalloidin/
-            └── [4 tiles per channel]
+        ├── CorrDNA/           [4 tiles: Site_1.tiff ... Site_4.tiff]
+        ├── CorrCHN2/          [4 tiles per channel]
+        └── CorrPhalloidin/    [4 tiles per channel]
+```
+
+### Barcoding Track (13 channels → 78 TIFFs)
+
+```text
+output/
+├── barcoding_stitched/
+│   └── Plate1-A1/
+│       ├── StitchedPlate_Plate1_Well_A1_Site__Cycle01_DNA.tiff
+│       ├── StitchedPlate_Plate1_Well_A1_Site__Cycle01_A.tiff
+│       └── ... [Cycle01-03 × A/C/G/T + DNA per cycle = 13 channels]
+├── barcoding_stitched_10X/
+└── barcoding_cropped/
+    └── Plate1-A1/
+        ├── Cycle01_DNA/       [4 tiles per channel × 13 channels = 52 tiles]
+        ├── Cycle01_A/
+        └── ... [13 channel subdirectories]
 ```
 
 **Output formats:**
 
-- **Stitched images**: Full-resolution, scaled and padded whole-well composite (1600×1600 for 2×2 grid)
-- **10X images**: Downsampled previews for quick QC visualization
-- **Cropped tiles**: Regular grid of tiles (800×800) for CellProfiler analysis
+- **Stitched images**: Full-resolution whole-well composite (1600×1600 for 2×2 grid with 400px tiles)
+- **10X images**: Downsampled previews (160×160) for quick QC visualization
+- **Cropped tiles**: Regular grid of tiles (800×800, 4 per channel) for CellProfiler analysis
 
 ## Notes
 
@@ -122,3 +130,14 @@ output/
 - Output dimensions depend on `SC_TILE_SIZE` and grid layout (2×2 default)
 - Barcoding track processes all cycles × channels (e.g., Cycle01-03 × A/C/G/T/DNA)
 - Same process applies to both painting and barcoding tracks
+
+## Production Compatibility
+
+To match production `stitch_crop.py` output format, the following changes would be needed:
+
+- Add `plate` and `well` as explicit Jython script parameters (pass from `stitch_crop_v0_run.sh`)
+- Change directory structure: `output/{track}_{type}/` → `output/images_corrected_{type}/{track}/{plate}/`
+- Change stitched filenames: `StitchedPlate_Plate1_Well_A1_Site__CorrDNA.tiff` → `Plate1-A1-CorrDNA-Stitched.tiff`
+- Change cropped filenames: `CorrDNA/CorrDNA_Site_1.tiff` → `Plate_Plate1_Well_A1_Site_1_CorrDNA.tiff` (remove channel subdirectories)
+
+**Alternative:** Write a post-processing script that restructures the legacy output format to production format (preserves v0 script as reference)

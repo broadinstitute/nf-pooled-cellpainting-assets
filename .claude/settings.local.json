@@ -70,7 +70,14 @@
       "Bash(/tmp/test_qc_concise:*)",
       "Bash(mv:*)",
       "Bash(PIPELINE_STEP=6_qc_align docker-compose run:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(CROP_PERCENT=25 PIPELINE_STEP=8 docker-compose run:*)",
+      "Bash(md5:*)",
+      "WebFetch(domain:imagej.net)",
+      "Bash(python:*)",
+      "Bash(git reset:*)",
+      "Bash(PLATE=Plate2 WELL=B3 SIZE=800 bash -c '\ncd /Users/shsingh/Documents/GitHub/nf/nf-pooled-cellpainting-assets/pcpip\n\n# Source the config section\nPLATE=\"\"${PLATE:-Plate1}\"\"\nWELL=\"\"${WELL:-A1}\"\"\nTRACK=\"\"${TRACK:-painting}\"\"\nSIZE=\"\"${SIZE:-400}\"\"\nFINAL_TILE_SIZE=\"\"${FINAL_TILE_SIZE:-800}\"\"\nINPUT_SUBDIR=\"\"${INPUT_SUBDIR:-images_corrected_flattened/${TRACK}/${PLATE}}\"\"\nOUT_SUBDIR_TAG=\"\"${OUT_SUBDIR_TAG:-${PLATE}-${WELL}}\"\"\n\necho \"\"=== Testing with PLATE=Plate2 WELL=B3 SIZE=800 ===\"\"\necho \"\"PLATE: $PLATE\"\"\necho \"\"WELL: $WELL\"\"\necho \"\"SIZE: $SIZE\"\"\necho \"\"INPUT_SUBDIR: $INPUT_SUBDIR\"\"\necho \"\"OUT_SUBDIR_TAG: $OUT_SUBDIR_TAG\"\"\n')",
+      "Bash(SC_PLATE=Plate2 SC_WELL=B3 SC_TILE_SIZE=800 bash:*)"
     ],
     "deny": [],
     "ask": [],

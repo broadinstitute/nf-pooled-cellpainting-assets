@@ -1,6 +1,14 @@
 # Stitch & Crop v0 - Usage Guide
 
-Legacy Fiji-based stitching and cropping workflow.
+Fiji-based stitching and cropping workflow.
+
+## Provenance
+
+The core Jython script `stitch_crop_v0.py` is a verbatim copy of the original reference implementation:
+
+**Source:** <https://github.com/broadinstitute/pooled-cell-painting-image-processing/blob/a06b3ae6072c35ee79b4ba27bdb943240ca90c02/FIJI/BatchStitchPooledCellPainting_StitchAndCrop_Headless.py>
+
+This is the reference implementation for the stitching workflow. The wrapper scripts (`stitch_crop_v0_run.sh`, `stitch_crop_v0_flatten.py`) and documentation were created to enable local Docker-based execution.
 
 **Note:** This guide uses the **fix-s1** test data fixture (3 wells × 4 sites, 2×2 grid) for all examples. Commands and output file counts are specific to fix-s1 but the workflow is expected to apply to any dataset.
 

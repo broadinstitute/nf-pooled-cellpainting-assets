@@ -1,7 +1,10 @@
 # stitch_crop_v0.py - Code Explanation
 
+**DISCLAIMER: This explanation was bot-generated and has NOT been verified. It is provided
+for reference purposes only with no guarantee of accuracy or veracity. Use at your own risk.**
+
 Source: https://github.com/broadinstitute/pooled-cell-painting-image-processing/blob/a06b3ae6072c35ee79b4ba27bdb943240ca90c02/FIJI/BatchStitchPooledCellPainting_StitchAndCrop_Headless.py
-(Verbatim copy used as legacy reference implementation)
+(Verbatim copy of the original reference implementation)
 
 ⸻
 

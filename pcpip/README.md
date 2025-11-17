@@ -350,6 +350,27 @@ For example, building it out like this (the page will take a minute to fully loa
 - Use Python <3.14 because of some compatibility issues.
 - `jupytext` defaults to `master`; use the latest version instead.
 
+#### Building Fusion-Compatible Fiji Image
+
+To rebuild `cellprofiler/distributed-fiji:fusion` with `ENTRYPOINT []` for Nextflow Fusion compatibility:
+
+```bash
+# Create Dockerfile
+cat > Dockerfile.fiji-fusion <<'EOF'
+FROM cellprofiler/distributed-fiji@sha256:44dbc2ddb34260e7883980dc6719dfb73babb2e158c11b106c94c0192dad5e95
+ENTRYPOINT []
+EOF
+
+# Build and push
+docker buildx build --platform linux/amd64 \
+  -f Dockerfile.fiji-fusion \
+  -t cellprofiler/distributed-fiji:fusion \
+  -t cellprofiler/distributed-fiji:fusion-v0.1.0 \
+  --push .
+```
+
+**Note:** Use `docker buildx build --platform linux/amd64 --push` to ensure correct architecture when building from ARM hosts.
+
 #### Creating and Uploading Cropped Input Datasets
 
 To create a pre-cropped input dataset for faster testing:

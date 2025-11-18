@@ -355,6 +355,26 @@ For example, building it out like this (the page will take a minute to fully loa
 - Use Python <3.14 because of some compatibility issues.
 - `jupytext` defaults to `master`; use the latest version instead.
 
+#### Generating Samplesheets from S3 Datasets
+
+To create a samplesheet directly from an S3 dataset (e.g., cpg0032):
+
+```bash
+# Generate samplesheet from S3 (no download required)
+mkdir -p /tmp/pcpip-samplesheets
+uv run scripts/samplesheet_generate.py \
+  s3://cellpainting-gallery/cpg0032-pooled-rare/broad/images/2025_06_23_Batch3/images/Plate_A/ \
+  --output /tmp/pcpip-samplesheets/samplesheet_cpg0032_batch3_plateA.csv \
+  --batch Batch3 \
+  --wells "A1,A2" \
+  --no-sign-request
+
+# Upload to S3 reference location
+aws s3 cp /tmp/pcpip-samplesheets/samplesheet_cpg0032_batch3_plateA.csv \
+  s3://nf-pooled-cellpainting-sandbox/data/test-data/cpg0032-output/Source1/workspace/samplesheets/samplesheet1.csv \
+  --profile cslab
+```
+
 #### Building Fusion-Compatible Fiji Image
 
 To rebuild `cellprofiler/distributed-fiji:fusion` with `ENTRYPOINT []` for Nextflow Fusion compatibility:

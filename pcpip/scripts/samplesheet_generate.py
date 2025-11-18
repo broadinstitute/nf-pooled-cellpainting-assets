@@ -55,25 +55,56 @@ Filename Pattern Matching:
 
 Adding New Patterns:
   1. Define regex with named groups: plate, well, site, channels, cycle (optional)
-  2. Add pattern constant (e.g., DATASET_X_PAINTING_PATTERN)
-  3. Add to ALL_PATTERNS list: (pattern, 'painting'|'barcoding', default_cycle)
+  2. Create dataset-specific channel map (e.g., DATASET_X_CHANNEL_MAP)
+  3. Add pattern constant (e.g., DATASET_X_PAINTING_PATTERN)
+  4. Add to ALL_PATTERNS list: (pattern, 'painting'|'barcoding', default_cycle, channel_map)
      - Use default_cycle=1 for painting, None for barcoding (extracted from match)
-  4. Update file extensions in list_local_files() if needed
+  5. Update file extensions in list_local_files() if needed
 
   Example:
-    NEW_DATASET_PAINTING_PATTERN = re.compile(
-        r'(?P<plate>PlateX\\d+)/custom_dir/'
+    # Define separate channel maps for painting and barcoding tracks
+    DATASET_X_PAINTING_CHANNEL_MAP = {
+        'DAPI': 'DNA',
+        'AF488': 'ER',
+        'AF594': 'Mito',
+        'Cy5': 'RNA',
+    }
+
+    DATASET_X_BARCODING_CHANNEL_MAP = {
+        'DAPI': 'DNA',
+        'AF488': 'G',
+        'AF594': 'T',
+        'Cy5': 'A',
+        'Cy7': 'C',
+    }
+
+    # Define regex patterns for painting and barcoding
+    DATASET_X_PAINTING_PATTERN = re.compile(
+        r'(?P<plate>PlateX\\d+)/painting_dir/'
         r'Well(?P<well>[A-Z]\\d+)_...(?P<site>\\d{4})_'
         r'Channel(?P<channels>.*?)_Seq\\d+\\.tif$'
     )
-    ALL_PATTERNS.append((NEW_DATASET_PAINTING_PATTERN, 'painting', 1))
+
+    DATASET_X_BARCODING_PATTERN = re.compile(
+        r'(?P<plate>PlateX\\d+)/sbs-(?P<cycle>\\d+)/'
+        r'Well(?P<well>[A-Z]\\d+)_...(?P<site>\\d{4})_'
+        r'Channel(?P<channels>.*?)_Seq\\d+\\.tif$'
+    )
+
+    # Add both patterns to registry
+    ALL_PATTERNS.append((DATASET_X_PAINTING_PATTERN, 'painting', 1, DATASET_X_PAINTING_CHANNEL_MAP))
+    ALL_PATTERNS.append((DATASET_X_BARCODING_PATTERN, 'barcoding', None, DATASET_X_BARCODING_CHANNEL_MAP))
 
 Channel Name Normalization:
-  Channel names from filenames are normalized using CHANNEL_MAP:
-    PhalloAF750 → Phalloidin
-    CHN2-AF488  → CHN2
-    DAPI        → DNA
-  To add/modify mappings, edit CHANNEL_MAP dictionary.
+  Channel names from filenames are normalized using dataset and track-specific channel maps.
+  Each dataset has separate maps for painting and barcoding tracks.
+  Maps are selected automatically based on which filename pattern matches.
+
+  Examples:
+    FIX_S1 Painting: PhalloAF750 → Phalloidin, DAPI → DNA
+    FIX_S1 Barcoding: C → C, A → A, T → T, G → G, DAPI → DNA
+    CPG0032 Painting: GFP_long → Flag_long, A594 → Mito, Cy5 → ER
+    CPG0032 Barcoding: Cy3 → G, A594 → T, Cy5 → A, Cy7 → C
 
 Output:
   Samplesheet CSV with columns: path, arm, batch, plate, well, channels, site, cycle, n_frames
@@ -168,6 +199,41 @@ def list_local_files(local_dir):
     return files
 
 
+# Channel name normalization - dataset-specific (defined before patterns)
+# fix-s1 channel mappings
+FIX_S1_PAINTING_CHANNEL_MAP = {
+    'PhalloAF750': 'Phalloidin',
+    'CHN2-AF488': 'CHN2',
+    'DAPI': 'DNA',
+}
+
+FIX_S1_BARCODING_CHANNEL_MAP = {
+    'C': 'C',
+    'A': 'A',
+    'T': 'T',
+    'G': 'G',
+    'DAPI': 'DNA',
+}
+
+# cpg0032 channel mappings - verified from LoadData CSVs
+# Note: A594 and Cy5 have different meanings in painting vs barcoding contexts
+CPG0032_PAINTING_CHANNEL_MAP = {
+    'DAPI': 'DNA',
+    'GFP_long': 'Flag_long',
+    'GFP': 'Flag',
+    'A594': 'Mito',
+    'Cy5': 'ER',
+    '750': 'WGA',
+}
+
+CPG0032_BARCODING_CHANNEL_MAP = {
+    'DAPI': 'DNA',
+    'Cy3': 'G',
+    'A594': 'T',
+    'Cy5': 'A',
+    'Cy7': 'C',
+}
+
 # Regex patterns with named capture groups
 # All patterns must include: plate, well, site, channels
 # Optional: cycle (for barcoding, extracted from directory name)
@@ -199,28 +265,22 @@ CPG0032_BARCODING_PATTERN = re.compile(
 )
 
 # Pattern registry - add new datasets here
-# Format: (pattern, arm, default_cycle)
+# Format: (pattern, arm, default_cycle, channel_map)
 # - arm: 'painting' or 'barcoding'
 # - default_cycle: cycle number for painting (1), None for barcoding (extracted from match)
+# - channel_map: dataset-specific channel name mappings
 ALL_PATTERNS = [
-    (FIX_S1_PAINTING_PATTERN, 'painting', 1),
-    (FIX_S1_BARCODING_PATTERN, 'barcoding', None),
-    (CPG0032_PAINTING_PATTERN, 'painting', 1),
-    (CPG0032_BARCODING_PATTERN, 'barcoding', None),
+    (FIX_S1_PAINTING_PATTERN, 'painting', 1, FIX_S1_PAINTING_CHANNEL_MAP),
+    (FIX_S1_BARCODING_PATTERN, 'barcoding', None, FIX_S1_BARCODING_CHANNEL_MAP),
+    (CPG0032_PAINTING_PATTERN, 'painting', 1, CPG0032_PAINTING_CHANNEL_MAP),
+    (CPG0032_BARCODING_PATTERN, 'barcoding', None, CPG0032_BARCODING_CHANNEL_MAP),
 ]
 
-# Channel name normalization
-CHANNEL_MAP = {
-    'PhalloAF750': 'Phalloidin',
-    'CHN2-AF488': 'CHN2',
-    'DAPI': 'DNA',
-}
 
-
-def normalize_channels(channels_str):
-    """Normalize channel names from filename to standard names."""
+def normalize_channels(channels_str, channel_map):
+    """Normalize channel names from filename to standard names using dataset-specific map."""
     channels = channels_str.split(',')
-    normalized = [CHANNEL_MAP.get(ch, ch) for ch in channels]
+    normalized = [channel_map.get(ch, ch) for ch in channels]
     return ','.join(normalized)
 
 
@@ -239,7 +299,7 @@ def parse_image_file(file_path, batch, is_s3=False):
     path_str = str(file_path)
 
     # Try all patterns from registry
-    for pattern, arm, default_cycle in ALL_PATTERNS:
+    for pattern, arm, default_cycle, channel_map in ALL_PATTERNS:
         match = pattern.search(path_str)
         if match:
             data = match.groupdict()
@@ -249,7 +309,7 @@ def parse_image_file(file_path, batch, is_s3=False):
             # Store full S3 URI or local relative path
             data['path'] = path_str if is_s3 else f"pcpip/{file_path}"
             data['site'] = int(data['site'])
-            data['channels'] = normalize_channels(data['channels'])
+            data['channels'] = normalize_channels(data['channels'], channel_map)
             data['n_frames'] = len(data['channels'].split(','))
             return data
 

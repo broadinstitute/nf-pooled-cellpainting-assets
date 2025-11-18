@@ -62,6 +62,11 @@ uv run scripts/samplesheet_generate.py data/Source1/images/Batch1/images \
 # This creates the CSVs that CellProfiler pipelines will use
 uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv
 
+# 4a. (Optional) Inspect samplesheet statistics
+# Note: Edit scripts/samplesheet_inspect.sql to change the CSV path from S3 to local:
+# read_csv('data/Source1/workspace/samplesheets/samplesheet1.csv', AUTO_DETECT=TRUE)
+duckdb < scripts/samplesheet_inspect.sql
+
 # 5. (Optional) Crop images for faster processing
 # Overwrites originals - re-download from S3 to restore
 # Options: 25 (fastest), 50 (balanced), 75 (conservative)

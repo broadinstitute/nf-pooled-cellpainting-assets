@@ -40,7 +40,7 @@ Usage:
 Filename Pattern Matching:
   This script supports multiple dataset patterns:
 
-  PERISCOPE/fix-s1 (.ome.tiff):
+  fix-s1 (.ome.tiff):
     Cell Painting: {plate}/20X_CP_*/{filename}
     Barcoding:     {plate}/20X_c{cycle}_SBS-{cycle}/{filename}
     Example: Plate1/20X_CP_*/WellA1_PointA1_0000_Channel*_Seq0000.ome.tiff
@@ -53,7 +53,20 @@ Filename Pattern Matching:
   All patterns expect:
     Well{W}_Point{W}_{SITE:04d}_Channel{CHANNELS}_Seq{SEQ:04d}.[ome.tiff|nd2]
 
-  To support different filename conventions, modify the regex patterns.
+Adding New Patterns:
+  1. Define regex with named groups: plate, well, site, channels, cycle (optional)
+  2. Add pattern constant (e.g., DATASET_X_PAINTING_PATTERN)
+  3. Add to ALL_PATTERNS list: (pattern, 'painting'|'barcoding', default_cycle)
+     - Use default_cycle=1 for painting, None for barcoding (extracted from match)
+  4. Update file extensions in list_local_files() if needed
+
+  Example:
+    NEW_DATASET_PAINTING_PATTERN = re.compile(
+        r'(?P<plate>PlateX\\d+)/custom_dir/'
+        r'Well(?P<well>[A-Z]\\d+)_...(?P<site>\\d{4})_'
+        r'Channel(?P<channels>.*?)_Seq\\d+\\.tif$'
+    )
+    ALL_PATTERNS.append((NEW_DATASET_PAINTING_PATTERN, 'painting', 1))
 
 Channel Name Normalization:
   Channel names from filenames are normalized using CHANNEL_MAP:
@@ -143,9 +156,10 @@ def list_local_files(local_dir):
     if not input_path.exists():
         raise FileNotFoundError(f"Input directory not found: {local_dir}")
 
-    # Find all image files (.ome.tiff and .nd2)
+    # Find all image files - add new extensions here as needed
     files_ometiff = list(input_path.glob("**/*.ome.tiff"))
     files_nd2 = list(input_path.glob("**/*.nd2"))
+    # Add more: files_ext = list(input_path.glob("**/*.ext"))
     files = sorted(files_ometiff + files_nd2)
 
     if not files:
@@ -155,20 +169,23 @@ def list_local_files(local_dir):
 
 
 # Regex patterns with named capture groups
-# PERISCOPE/fix-s1 patterns (.ome.tiff)
-PAINTING_PATTERN = re.compile(
+# All patterns must include: plate, well, site, channels
+# Optional: cycle (for barcoding, extracted from directory name)
+
+# fix-s1 dataset patterns (.ome.tiff)
+FIX_S1_PAINTING_PATTERN = re.compile(
     r'(?P<plate>Plate\d+)/20X_CP_.*?/'
     r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
     r'Channel(?P<channels>.*?)_Seq\d+\.ome\.tiff$'
 )
 
-BARCODING_PATTERN = re.compile(
+FIX_S1_BARCODING_PATTERN = re.compile(
     r'(?P<plate>Plate\d+)/20X_c(?P<cycle>\d+)_SBS-\d+/'
     r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
     r'Channel(?P<channels>.*?)_Seq\d+\.ome\.tiff$'
 )
 
-# cpg0032-pooled-rare patterns (.nd2)
+# cpg0032-pooled-rare dataset patterns (.nd2)
 CPG0032_PAINTING_PATTERN = re.compile(
     r'(?P<plate>Plate_[A-Z])/20X_CP_Plate_[A-Z]/'
     r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
@@ -180,6 +197,17 @@ CPG0032_BARCODING_PATTERN = re.compile(
     r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
     r'Channel(?P<channels>.*?)_Seq\d+\.nd2$'
 )
+
+# Pattern registry - add new datasets here
+# Format: (pattern, arm, default_cycle)
+# - arm: 'painting' or 'barcoding'
+# - default_cycle: cycle number for painting (1), None for barcoding (extracted from match)
+ALL_PATTERNS = [
+    (FIX_S1_PAINTING_PATTERN, 'painting', 1),
+    (FIX_S1_BARCODING_PATTERN, 'barcoding', None),
+    (CPG0032_PAINTING_PATTERN, 'painting', 1),
+    (CPG0032_BARCODING_PATTERN, 'barcoding', None),
+]
 
 # Channel name normalization
 CHANNEL_MAP = {
@@ -210,15 +238,8 @@ def parse_image_file(file_path, batch, is_s3=False):
     """
     path_str = str(file_path)
 
-    # Try all patterns in order: PERISCOPE first, then cpg0032
-    patterns = [
-        (PAINTING_PATTERN, 'painting', 1),
-        (BARCODING_PATTERN, 'barcoding', None),  # cycle extracted from match
-        (CPG0032_PAINTING_PATTERN, 'painting', 1),
-        (CPG0032_BARCODING_PATTERN, 'barcoding', None),  # cycle extracted from match
-    ]
-
-    for pattern, arm, default_cycle in patterns:
+    # Try all patterns from registry
+    for pattern, arm, default_cycle in ALL_PATTERNS:
         match = pattern.search(path_str)
         if match:
             data = match.groupdict()

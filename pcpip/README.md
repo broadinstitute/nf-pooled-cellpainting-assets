@@ -54,6 +54,7 @@ aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ data/
 # Use --wells to filter to specific wells at generation time
 # Options: --wells "A1" for single well, or --wells "A1,A2,B1" for multiple wells
 uv run scripts/samplesheet_generate.py data/Source1/images/Batch1/images \
+  --dataset fix_s1 \
   --output data/Source1/workspace/samplesheets/samplesheet1.csv \
   --batch Batch1 \
   --wells "A1"
@@ -364,6 +365,7 @@ To create a samplesheet directly from an S3 dataset (e.g., cpg0032):
 mkdir -p /tmp/pcpip-samplesheets
 uv run scripts/samplesheet_generate.py \
   s3://cellpainting-gallery/cpg0032-pooled-rare/broad/images/2025_06_23_Batch3/images/Plate_A/ \
+  --dataset cpg0032 \
   --output /tmp/pcpip-samplesheets/samplesheet_cpg0032_batch3_plateA.csv \
   --batch Batch3 \
   --wells "A1,A2" \

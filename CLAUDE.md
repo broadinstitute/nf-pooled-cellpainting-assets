@@ -38,6 +38,7 @@ aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ data/
 
 # Generate samplesheet and LoadData CSVs
 uv run scripts/samplesheet_generate.py data/Source1/images/Batch1/images \
+  --dataset fix_s1 \
   --output data/Source1/workspace/samplesheets/samplesheet1.csv \
   --wells "A1"
 uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv

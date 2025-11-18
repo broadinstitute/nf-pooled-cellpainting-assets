@@ -11,14 +11,20 @@ Samplesheet generator for PCPIP pipelines.
 Scans image directories (local or S3) and generates samplesheet CSV by parsing
 filenames with regex patterns. Eliminates manual samplesheet creation.
 
+The script uses a dataset-centric approach where specifying a dataset (e.g., fix_s1)
+automatically processes both painting and barcoding arms with their respective patterns
+and channel mappings.
+
 Usage:
   # Local directory - all wells
   uv run scripts/samplesheet_generate.py data/Source1/images/Batch1/images \
+    --dataset fix_s1 \
     --output data/Source1/workspace/samplesheets/samplesheet1.csv \
     --batch Batch1
 
   # Local directory - specific wells (recommended - filters at source)
   uv run scripts/samplesheet_generate.py data/Source1/images/Batch1/images \
+    --dataset fix_s1 \
     --output data/Source1/workspace/samplesheets/samplesheet1.csv \
     --batch Batch1 \
     --wells "A1"
@@ -26,90 +32,76 @@ Usage:
   # S3 URI - generates samplesheet without downloading images
   uv run scripts/samplesheet_generate.py \
     s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/Source1/images/Batch1/images/ \
+    --dataset fix_s1 \
     --output samplesheet.csv \
     --batch Batch1 \
     --wells "A1,A2" \
     --no-sign-request
 
-  # S3 with AWS profile
+  # S3 with AWS profile (cpg0032 dataset)
   uv run scripts/samplesheet_generate.py \
-    s3://my-bucket/images/ \
+    s3://cellpainting-gallery/cpg0032-pooled-rare/broad/images/2025_06_23_Batch3/images/Plate_A/ \
+    --dataset cpg0032 \
     --output samplesheet.csv \
+    --batch Batch3 \
     --aws-profile my-profile
 
-Filename Pattern Matching:
-  This script supports multiple dataset patterns:
+Available Datasets:
+  - fix_s1: .ome.tiff files with 20X_CP_* (painting) and 20X_c*_SBS-* (barcoding) directories
+  - cpg0032: .nd2 files with 20X_CP_Plate_* (painting) and 10X-SBS-* (barcoding) directories
 
-  fix-s1 (.ome.tiff):
-    Cell Painting: {plate}/20X_CP_*/{filename}
-    Barcoding:     {plate}/20X_c{cycle}_SBS-{cycle}/{filename}
+Dataset-Specific Patterns:
+  Each dataset defines both arms (painting + barcoding) with:
+  - Filename regex patterns with named groups: plate, well, site, channels, cycle
+  - Track-specific channel mappings (same hardware channel can mean different biology)
+
+  fix_s1 (.ome.tiff):
+    Painting:  {plate}/20X_CP_*/{filename}
+    Barcoding: {plate}/20X_c{cycle}_SBS-{cycle}/{filename}
     Example: Plate1/20X_CP_*/WellA1_PointA1_0000_Channel*_Seq0000.ome.tiff
 
-  cpg0032-pooled-rare (.nd2):
-    Cell Painting: {plate}/20X_CP_Plate_{plate}/{filename}
-    Barcoding:     {plate}/10X-SBS-{cycle}/{filename}
+  cpg0032 (.nd2):
+    Painting:  {plate}/20X_CP_Plate_{plate}/{filename}
+    Barcoding: {plate}/10X-SBS-{cycle}/{filename}
     Example: Plate_A/20X_CP_Plate_A/WellA1_PointA1_0000_Channel*_Seq0000.nd2
 
-  All patterns expect:
+  All filenames follow:
     Well{W}_Point{W}_{SITE:04d}_Channel{CHANNELS}_Seq{SEQ:04d}.[ome.tiff|nd2]
 
-Adding New Patterns:
-  1. Define regex with named groups: plate, well, site, channels, cycle (optional)
-  2. Create dataset-specific channel map (e.g., DATASET_X_CHANNEL_MAP)
-  3. Add pattern constant (e.g., DATASET_X_PAINTING_PATTERN)
-  4. Add to ALL_PATTERNS list: (pattern, 'painting'|'barcoding', default_cycle, channel_map)
-     - Use default_cycle=1 for painting, None for barcoding (extracted from match)
-  5. Update file extensions in list_local_files() if needed
+Adding New Datasets:
+  Add a new entry to the DATASETS dict with both arms:
 
-  Example:
-    # Define separate channel maps for painting and barcoding tracks
-    DATASET_X_PAINTING_CHANNEL_MAP = {
-        'DAPI': 'DNA',
-        'AF488': 'ER',
-        'AF594': 'Mito',
-        'Cy5': 'RNA',
-    }
+  DATASETS['dataset_x'] = {
+      'painting': {
+          'pattern': re.compile(r'...'),  # Regex with named groups
+          'channel_map': {...},           # Raw → normalized channel names
+          'default_cycle': 1,             # Always 1 for painting
+      },
+      'barcoding': {
+          'pattern': re.compile(r'...'),  # Must include (?P<cycle>\\d+) group
+          'channel_map': {...},           # Different mapping than painting!
+          'default_cycle': None,          # Extracted from directory name
+      },
+  }
 
-    DATASET_X_BARCODING_CHANNEL_MAP = {
-        'DAPI': 'DNA',
-        'AF488': 'G',
-        'AF594': 'T',
-        'Cy5': 'A',
-        'Cy7': 'C',
-    }
-
-    # Define regex patterns for painting and barcoding
-    DATASET_X_PAINTING_PATTERN = re.compile(
-        r'(?P<plate>PlateX\\d+)/painting_dir/'
-        r'Well(?P<well>[A-Z]\\d+)_...(?P<site>\\d{4})_'
-        r'Channel(?P<channels>.*?)_Seq\\d+\\.tif$'
-    )
-
-    DATASET_X_BARCODING_PATTERN = re.compile(
-        r'(?P<plate>PlateX\\d+)/sbs-(?P<cycle>\\d+)/'
-        r'Well(?P<well>[A-Z]\\d+)_...(?P<site>\\d{4})_'
-        r'Channel(?P<channels>.*?)_Seq\\d+\\.tif$'
-    )
-
-    # Add both patterns to registry
-    ALL_PATTERNS.append((DATASET_X_PAINTING_PATTERN, 'painting', 1, DATASET_X_PAINTING_CHANNEL_MAP))
-    ALL_PATTERNS.append((DATASET_X_BARCODING_PATTERN, 'barcoding', None, DATASET_X_BARCODING_CHANNEL_MAP))
+  Update file extensions in list_local_files() if needed (e.g., .tif, .tiff, etc.)
 
 Channel Name Normalization:
   Channel names from filenames are normalized using dataset and track-specific channel maps.
-  Each dataset has separate maps for painting and barcoding tracks.
-  Maps are selected automatically based on which filename pattern matches.
+  Each dataset has separate maps for painting and barcoding tracks because the same
+  hardware channel (e.g., A594) can measure different biological targets in different assays.
 
   Examples:
-    FIX_S1 Painting: PhalloAF750 → Phalloidin, DAPI → DNA
-    FIX_S1 Barcoding: C → C, A → A, T → T, G → G, DAPI → DNA
-    CPG0032 Painting: GFP_long → Flag_long, A594 → Mito, Cy5 → ER
-    CPG0032 Barcoding: Cy3 → G, A594 → T, Cy5 → A, Cy7 → C
+    fix_s1 Painting:   PhalloAF750 → Phalloidin, DAPI → DNA
+    fix_s1 Barcoding:  C → C, A → A, T → T, G → G, DAPI → DNA
+    cpg0032 Painting:  GFP_long → Flag_long, A594 → Mito, Cy5 → ER
+    cpg0032 Barcoding: Cy3 → G, A594 → T, Cy5 → A, Cy7 → C (same channel, different meaning!)
 
 Output:
   Samplesheet CSV with columns: path, arm, batch, plate, well, channels, site, cycle, n_frames
   - For local paths: relative paths like "pcpip/data/..."
   - For S3: full S3 URIs like "s3://bucket/path/..."
+  - Contains rows for BOTH painting and barcoding arms automatically
   This samplesheet is used by load_data_generate.py to create LoadData CSVs for CellProfiler.
 """
 
@@ -119,6 +111,90 @@ import subprocess
 import sys
 from pathlib import Path
 import pandas as pd
+
+
+# Dataset registry - add new datasets here
+# Each dataset has both painting and barcoding arms with their own patterns and channel maps
+# Format: {
+#   'dataset_name': {
+#     'painting': {
+#       'pattern': compiled regex with named groups (plate, well, site, channels),
+#       'channel_map': dict mapping raw channel names to normalized names,
+#       'default_cycle': cycle number (always 1 for painting)
+#     },
+#     'barcoding': {
+#       'pattern': compiled regex with named groups (plate, well, site, channels, cycle),
+#       'channel_map': dict mapping raw channel names to normalized names,
+#       'default_cycle': None (extracted from directory name in match)
+#     }
+#   }
+# }
+
+DATASETS = {
+    'fix_s1': {
+        'painting': {
+            'pattern': re.compile(
+                r'(?P<plate>Plate\d+)/20X_CP_.*?/'
+                r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
+                r'Channel(?P<channels>.*?)_Seq\d+\.ome\.tiff$'
+            ),
+            'channel_map': {
+                'PhalloAF750': 'Phalloidin',
+                'CHN2-AF488': 'CHN2',
+                'DAPI': 'DNA',
+            },
+            'default_cycle': 1,
+        },
+        'barcoding': {
+            'pattern': re.compile(
+                r'(?P<plate>Plate\d+)/20X_c(?P<cycle>\d+)_SBS-\d+/'
+                r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
+                r'Channel(?P<channels>.*?)_Seq\d+\.ome\.tiff$'
+            ),
+            'channel_map': {
+                'C': 'C',
+                'A': 'A',
+                'T': 'T',
+                'G': 'G',
+                'DAPI': 'DNA',
+            },
+            'default_cycle': None,
+        },
+    },
+    'cpg0032': {
+        'painting': {
+            'pattern': re.compile(
+                r'(?P<plate>Plate_[A-Z])/20X_CP_Plate_[A-Z]/'
+                r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
+                r'Channel(?P<channels>.*?)_Seq\d+\.nd2$'
+            ),
+            'channel_map': {
+                'DAPI': 'DNA',
+                'GFP_long': 'Flag_long',
+                'GFP': 'Flag',
+                'A594': 'Mito',
+                'Cy5': 'ER',
+                '750': 'WGA',
+            },
+            'default_cycle': 1,
+        },
+        'barcoding': {
+            'pattern': re.compile(
+                r'(?P<plate>Plate_[A-Z])/10X-SBS-(?P<cycle>\d+)/'
+                r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
+                r'Channel(?P<channels>.*?)_Seq\d+\.nd2$'
+            ),
+            'channel_map': {
+                'DAPI': 'DNA',
+                'Cy3': 'G',
+                'A594': 'T',
+                'Cy5': 'A',
+                'Cy7': 'C',
+            },
+            'default_cycle': None,
+        },
+    },
+}
 
 
 def is_s3_uri(path):
@@ -199,84 +275,6 @@ def list_local_files(local_dir):
     return files
 
 
-# Channel name normalization - dataset-specific (defined before patterns)
-# fix-s1 channel mappings
-FIX_S1_PAINTING_CHANNEL_MAP = {
-    'PhalloAF750': 'Phalloidin',
-    'CHN2-AF488': 'CHN2',
-    'DAPI': 'DNA',
-}
-
-FIX_S1_BARCODING_CHANNEL_MAP = {
-    'C': 'C',
-    'A': 'A',
-    'T': 'T',
-    'G': 'G',
-    'DAPI': 'DNA',
-}
-
-# cpg0032 channel mappings - verified from LoadData CSVs
-# Note: A594 and Cy5 have different meanings in painting vs barcoding contexts
-CPG0032_PAINTING_CHANNEL_MAP = {
-    'DAPI': 'DNA',
-    'GFP_long': 'Flag_long',
-    'GFP': 'Flag',
-    'A594': 'Mito',
-    'Cy5': 'ER',
-    '750': 'WGA',
-}
-
-CPG0032_BARCODING_CHANNEL_MAP = {
-    'DAPI': 'DNA',
-    'Cy3': 'G',
-    'A594': 'T',
-    'Cy5': 'A',
-    'Cy7': 'C',
-}
-
-# Regex patterns with named capture groups
-# All patterns must include: plate, well, site, channels
-# Optional: cycle (for barcoding, extracted from directory name)
-
-# fix-s1 dataset patterns (.ome.tiff)
-FIX_S1_PAINTING_PATTERN = re.compile(
-    r'(?P<plate>Plate\d+)/20X_CP_.*?/'
-    r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
-    r'Channel(?P<channels>.*?)_Seq\d+\.ome\.tiff$'
-)
-
-FIX_S1_BARCODING_PATTERN = re.compile(
-    r'(?P<plate>Plate\d+)/20X_c(?P<cycle>\d+)_SBS-\d+/'
-    r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
-    r'Channel(?P<channels>.*?)_Seq\d+\.ome\.tiff$'
-)
-
-# cpg0032-pooled-rare dataset patterns (.nd2)
-CPG0032_PAINTING_PATTERN = re.compile(
-    r'(?P<plate>Plate_[A-Z])/20X_CP_Plate_[A-Z]/'
-    r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
-    r'Channel(?P<channels>.*?)_Seq\d+\.nd2$'
-)
-
-CPG0032_BARCODING_PATTERN = re.compile(
-    r'(?P<plate>Plate_[A-Z])/10X-SBS-(?P<cycle>\d+)/'
-    r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
-    r'Channel(?P<channels>.*?)_Seq\d+\.nd2$'
-)
-
-# Pattern registry - add new datasets here
-# Format: (pattern, arm, default_cycle, channel_map)
-# - arm: 'painting' or 'barcoding'
-# - default_cycle: cycle number for painting (1), None for barcoding (extracted from match)
-# - channel_map: dataset-specific channel name mappings
-ALL_PATTERNS = [
-    (FIX_S1_PAINTING_PATTERN, 'painting', 1, FIX_S1_PAINTING_CHANNEL_MAP),
-    (FIX_S1_BARCODING_PATTERN, 'barcoding', None, FIX_S1_BARCODING_CHANNEL_MAP),
-    (CPG0032_PAINTING_PATTERN, 'painting', 1, CPG0032_PAINTING_CHANNEL_MAP),
-    (CPG0032_BARCODING_PATTERN, 'barcoding', None, CPG0032_BARCODING_CHANNEL_MAP),
-]
-
-
 def normalize_channels(channels_str, channel_map):
     """Normalize channel names from filename to standard names using dataset-specific map."""
     channels = channels_str.split(',')
@@ -284,13 +282,14 @@ def normalize_channels(channels_str, channel_map):
     return ','.join(normalized)
 
 
-def parse_image_file(file_path, batch, is_s3=False):
+def parse_image_file(file_path, batch, dataset, is_s3=False):
     """
-    Parse image file path and extract metadata.
+    Parse image file path and extract metadata using dataset-specific patterns.
 
     Args:
         file_path: Path to image file (str for S3, Path for local)
         batch: Batch name
+        dataset: Dataset name (e.g., 'fix_s1', 'cpg0032')
         is_s3: Whether this is an S3 URI
 
     Returns:
@@ -298,8 +297,13 @@ def parse_image_file(file_path, batch, is_s3=False):
     """
     path_str = str(file_path)
 
-    # Try all patterns from registry
-    for pattern, arm, default_cycle, channel_map in ALL_PATTERNS:
+    # Try both arms (painting and barcoding) for the specified dataset
+    for arm in ['painting', 'barcoding']:
+        arm_config = DATASETS[dataset][arm]
+        pattern = arm_config['pattern']
+        channel_map = arm_config['channel_map']
+        default_cycle = arm_config['default_cycle']
+
         match = pattern.search(path_str)
         if match:
             data = match.groupdict()
@@ -313,17 +317,18 @@ def parse_image_file(file_path, batch, is_s3=False):
             data['n_frames'] = len(data['channels'].split(','))
             return data
 
-    # No match
+    # No match for either arm
     return None
 
 
-def generate_samplesheet(input_dir, batch='Batch1', aws_profile=None, no_sign_request=False):
+def generate_samplesheet(input_dir, dataset, batch='Batch1', aws_profile=None, no_sign_request=False):
     """
     Generate samplesheet by scanning image directory (local or S3).
 
     Args:
         input_dir: Path to images directory or S3 URI
                   (e.g., data/Source1/images/Batch1/images or s3://bucket/prefix/)
+        dataset: Dataset name (e.g., 'fix_s1', 'cpg0032')
         batch: Batch name (default: Batch1)
         aws_profile: AWS profile name for S3 access (optional)
         no_sign_request: Use anonymous S3 access (optional)
@@ -331,6 +336,11 @@ def generate_samplesheet(input_dir, batch='Batch1', aws_profile=None, no_sign_re
     Returns:
         pandas DataFrame with samplesheet data
     """
+    # Validate dataset
+    if dataset not in DATASETS:
+        available = ', '.join(DATASETS.keys())
+        raise ValueError(f"Unknown dataset '{dataset}'. Available datasets: {available}")
+
     # Detect source type and list files
     is_s3 = is_s3_uri(input_dir)
 
@@ -343,27 +353,28 @@ def generate_samplesheet(input_dir, batch='Batch1', aws_profile=None, no_sign_re
         raise ValueError(f"No image files (.ome.tiff or .nd2) found in {input_dir}")
 
     print(f"Found {len(image_files)} image files")
+    print(f"Using dataset: {dataset}")
 
     # Parse each file
     rows = []
     skipped = []
 
     for file_path in image_files:
-        data = parse_image_file(file_path, batch, is_s3=is_s3)
+        data = parse_image_file(file_path, batch, dataset, is_s3=is_s3)
         if data:
             rows.append(data)
         else:
             skipped.append(file_path)
 
     if skipped:
-        print(f"Warning: Skipped {len(skipped)} files that didn't match patterns:")
+        print(f"Warning: Skipped {len(skipped)} files that didn't match {dataset} patterns:")
         for path in skipped[:5]:  # Show first 5
             print(f"  {path}")
         if len(skipped) > 5:
             print(f"  ... and {len(skipped) - 5} more")
 
     if not rows:
-        raise ValueError("No files matched the expected patterns")
+        raise ValueError(f"No files matched the expected {dataset} patterns")
 
     # Create DataFrame with correct column order
     df = pd.DataFrame(rows)
@@ -374,6 +385,8 @@ def generate_samplesheet(input_dir, batch='Batch1', aws_profile=None, no_sign_re
     df = df.sort_values(['arm', 'cycle', 'well', 'site']).reset_index(drop=True)
 
     print(f"Generated samplesheet with {len(df)} rows")
+    print(f"  Painting rows: {len(df[df['arm'] == 'painting'])}")
+    print(f"  Barcoding rows: {len(df[df['arm'] == 'barcoding'])}")
 
     return df
 
@@ -385,6 +398,12 @@ def main():
     parser.add_argument(
         'input_dir',
         help='Path to images directory or S3 URI (e.g., data/Source1/images/Batch1/images or s3://bucket/prefix/)'
+    )
+    parser.add_argument(
+        '--dataset',
+        required=True,
+        choices=list(DATASETS.keys()),
+        help='Dataset type - determines filename patterns and channel mappings for both painting and barcoding arms'
     )
     parser.add_argument(
         '--output',
@@ -417,6 +436,7 @@ def main():
     # Generate samplesheet
     df = generate_samplesheet(
         args.input_dir,
+        args.dataset,
         args.batch,
         aws_profile=args.aws_profile,
         no_sign_request=args.no_sign_request

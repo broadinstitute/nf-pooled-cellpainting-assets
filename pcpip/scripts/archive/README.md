@@ -23,21 +23,3 @@ uv run scripts/archive/load_data_transform_p3.py \
 ```bash
 uv run scripts/archive/load_data_check.py ${BASE_DIR}/load_data_pipeline9.csv
 ```
-
-### Validate Generated CSVs Against Reference
-
-Reference LoadData CSVs exist in S3 fixtures as validation artifacts for regression testing:
-
-```bash
-# Download fixture with reference CSVs
-FIXTURE=fix-s1
-aws s3 sync s3://nf-pooled-cellpainting-sandbox/data/test-data/${FIXTURE}/ data/ --no-sign-request
-
-# Generate samplesheet and LoadData CSVs
-uv run scripts/samplesheet_generate.py data/Source1/images/Batch1/images \
-  --output data/Source1/workspace/samplesheets/samplesheet1.csv \
-  --wells "A1"
-
-# Validate generated CSVs against reference CSVs
-uv run scripts/load_data_generate.py data/Source1/workspace/samplesheets/samplesheet1.csv --validate
-```

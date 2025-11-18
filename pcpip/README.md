@@ -199,7 +199,8 @@ flowchart TD
 
 ```text
 pcpip/
-├── pipelines/                             # CellProfiler pipeline files (.cppipe)
+├── pipelines/                             # Demo pipeline files for test fixtures
+├── pipelines-datasets/                    # Production dataset pipelines (cpg0032, etc.)
 ├── plugins/                               # CellProfiler plugins (cloned separately)
 ├── scripts/                               # Processing scripts and utilities
 │   ├── run_pcpip.sh                       # Main pipeline orchestration script
@@ -376,6 +377,10 @@ aws s3 cp /tmp/pcpip-samplesheets/samplesheet_cpg0032_batch3_plateA.csv \
   s3://nf-pooled-cellpainting-sandbox/data/test-data/cpg0032-output/Source1/workspace/samplesheets/samplesheet1.csv \
   --profile cslab
 ```
+
+#### Downloading Production Dataset Pipelines
+
+For production datasets (cpg0032, etc.), download dataset-specific pipelines to `pipelines-datasets/`. See [pipelines-datasets/README.md](pipelines-datasets/README.md) for download commands.
 
 #### Building Fusion-Compatible Fiji Image
 

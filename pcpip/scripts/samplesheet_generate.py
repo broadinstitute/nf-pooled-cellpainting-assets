@@ -38,16 +38,20 @@ Usage:
     --aws-profile my-profile
 
 Filename Pattern Matching:
-  This script uses hardcoded regex patterns (PAINTING_PATTERN and BARCODING_PATTERN)
-  to extract metadata from image filenames.
+  This script supports multiple dataset patterns:
 
-  Current patterns expect:
-    Cell Painting: Well{W}_Point{W}_{SITE:04d}_Channel{CHANNELS}_Seq{SEQ:04d}.ome.tiff
-    Barcoding:     Well{W}_Point{W}_{SITE:04d}_Channel{CHANNELS}_Seq{SEQ:04d}.ome.tiff
-
-  Directory structure:
+  PERISCOPE/fix-s1 (.ome.tiff):
     Cell Painting: {plate}/20X_CP_*/{filename}
     Barcoding:     {plate}/20X_c{cycle}_SBS-{cycle}/{filename}
+    Example: Plate1/20X_CP_*/WellA1_PointA1_0000_Channel*_Seq0000.ome.tiff
+
+  cpg0032-pooled-rare (.nd2):
+    Cell Painting: {plate}/20X_CP_Plate_{plate}/{filename}
+    Barcoding:     {plate}/10X-SBS-{cycle}/{filename}
+    Example: Plate_A/20X_CP_Plate_A/WellA1_PointA1_0000_Channel*_Seq0000.nd2
+
+  All patterns expect:
+    Well{W}_Point{W}_{SITE:04d}_Channel{CHANNELS}_Seq{SEQ:04d}.[ome.tiff|nd2]
 
   To support different filename conventions, modify the regex patterns.
 
@@ -139,16 +143,19 @@ def list_local_files(local_dir):
     if not input_path.exists():
         raise FileNotFoundError(f"Input directory not found: {local_dir}")
 
-    # Find all .ome.tiff files
-    files = sorted(input_path.glob("**/*.ome.tiff"))
+    # Find all image files (.ome.tiff and .nd2)
+    files_ometiff = list(input_path.glob("**/*.ome.tiff"))
+    files_nd2 = list(input_path.glob("**/*.nd2"))
+    files = sorted(files_ometiff + files_nd2)
 
     if not files:
-        raise ValueError(f"No .ome.tiff files found in {local_dir}")
+        raise ValueError(f"No .ome.tiff or .nd2 files found in {local_dir}")
 
     return files
 
 
 # Regex patterns with named capture groups
+# PERISCOPE/fix-s1 patterns (.ome.tiff)
 PAINTING_PATTERN = re.compile(
     r'(?P<plate>Plate\d+)/20X_CP_.*?/'
     r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
@@ -159,6 +166,19 @@ BARCODING_PATTERN = re.compile(
     r'(?P<plate>Plate\d+)/20X_c(?P<cycle>\d+)_SBS-\d+/'
     r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
     r'Channel(?P<channels>.*?)_Seq\d+\.ome\.tiff$'
+)
+
+# cpg0032-pooled-rare patterns (.nd2)
+CPG0032_PAINTING_PATTERN = re.compile(
+    r'(?P<plate>Plate_[A-Z])/20X_CP_Plate_[A-Z]/'
+    r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
+    r'Channel(?P<channels>.*?)_Seq\d+\.nd2$'
+)
+
+CPG0032_BARCODING_PATTERN = re.compile(
+    r'(?P<plate>Plate_[A-Z])/10X-SBS-(?P<cycle>\d+)/'
+    r'Well(?P<well>[A-Z]\d+)_Point[A-Z]\d+_(?P<site>\d{4})_'
+    r'Channel(?P<channels>.*?)_Seq\d+\.nd2$'
 )
 
 # Channel name normalization
@@ -190,33 +210,27 @@ def parse_image_file(file_path, batch, is_s3=False):
     """
     path_str = str(file_path)
 
-    # Try painting pattern
-    match = PAINTING_PATTERN.search(path_str)
-    if match:
-        data = match.groupdict()
-        data['arm'] = 'painting'
-        data['cycle'] = 1
-        data['batch'] = batch
-        # Store full S3 URI or local relative path
-        data['path'] = path_str if is_s3 else f"pcpip/{file_path}"
-        data['site'] = int(data['site'])
-        data['channels'] = normalize_channels(data['channels'])
-        data['n_frames'] = len(data['channels'].split(','))
-        return data
+    # Try all patterns in order: PERISCOPE first, then cpg0032
+    patterns = [
+        (PAINTING_PATTERN, 'painting', 1),
+        (BARCODING_PATTERN, 'barcoding', None),  # cycle extracted from match
+        (CPG0032_PAINTING_PATTERN, 'painting', 1),
+        (CPG0032_BARCODING_PATTERN, 'barcoding', None),  # cycle extracted from match
+    ]
 
-    # Try barcoding pattern
-    match = BARCODING_PATTERN.search(path_str)
-    if match:
-        data = match.groupdict()
-        data['arm'] = 'barcoding'
-        data['cycle'] = int(data['cycle'])
-        data['batch'] = batch
-        # Store full S3 URI or local relative path
-        data['path'] = path_str if is_s3 else f"pcpip/{file_path}"
-        data['site'] = int(data['site'])
-        data['channels'] = normalize_channels(data['channels'])
-        data['n_frames'] = len(data['channels'].split(','))
-        return data
+    for pattern, arm, default_cycle in patterns:
+        match = pattern.search(path_str)
+        if match:
+            data = match.groupdict()
+            data['arm'] = arm
+            data['cycle'] = int(data['cycle']) if 'cycle' in data and data['cycle'] else default_cycle
+            data['batch'] = batch
+            # Store full S3 URI or local relative path
+            data['path'] = path_str if is_s3 else f"pcpip/{file_path}"
+            data['site'] = int(data['site'])
+            data['channels'] = normalize_channels(data['channels'])
+            data['n_frames'] = len(data['channels'].split(','))
+            return data
 
     # No match
     return None
@@ -245,7 +259,7 @@ def generate_samplesheet(input_dir, batch='Batch1', aws_profile=None, no_sign_re
         image_files = list_local_files(input_dir)
 
     if not image_files:
-        raise ValueError(f"No .ome.tiff files found in {input_dir}")
+        raise ValueError(f"No image files (.ome.tiff or .nd2) found in {input_dir}")
 
     print(f"Found {len(image_files)} image files")
 

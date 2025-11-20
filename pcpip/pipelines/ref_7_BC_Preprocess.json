@@ -4430,7 +4430,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle01_DNA"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle01_DNA"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -4536,7 +4536,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle01_A"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle01_A"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -4642,7 +4642,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle01_C"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle01_C"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -4748,7 +4748,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle01_G"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle01_G"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -4854,7 +4854,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle01_T"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle01_T"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -4960,7 +4960,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle02_A"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle02_A"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -5066,7 +5066,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle02_C"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle02_C"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -5172,7 +5172,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle02_G"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle02_G"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -5278,7 +5278,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle02_T"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle02_T"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -5384,7 +5384,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle03_A"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle03_A"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -5490,7 +5490,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle03_C"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle03_C"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -5596,7 +5596,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle03_G"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle03_G"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -5702,7 +5702,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_Cycle03_T"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_Cycle03_T"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -6651,7 +6651,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_StDev_Overlay"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_StDev_Overlay"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",
@@ -6757,7 +6757,7 @@
                 {
                     "name": "cellprofiler_core.setting.text._text.Text",
                     "text": "Enter single file name",
-                    "value": "Plate_\\g<Plate>_Well_\\g<Well_Value>_Site_\\g<Site>_StDev_Overlay"
+                    "value": "Plate_\\g<Plate>_Well_\\g<Well>_Site_\\g<Site>_StDev_Overlay"
                 },
                 {
                     "name": "cellprofiler_core.setting.text.number.integer._integer.Integer",

@@ -131,8 +131,7 @@ def pipeline3(samplesheet_df, base_path=None, qc_sites=None):
         data = {
             "Metadata_Plate": row["plate"],
             "Metadata_Site": row["site"],
-            "Metadata_Well": row["well"],
-            "Metadata_Well_Value": row["well"],
+            "Metadata_Well": row["well"]
         }
 
         # Add all data naturally without worrying about column order
@@ -215,8 +214,7 @@ def pipeline6(samplesheet_df, base_path=None):
         data = {
             "Metadata_Plate": plate,
             "Metadata_Site": site,
-            "Metadata_Well": well,
-            "Metadata_Well_Value": well,
+            "Metadata_Well": well
         }
 
         # Build paths for each cycle
@@ -269,8 +267,7 @@ def pipeline7(samplesheet_df, base_path=None):
         data = {
             "Metadata_Plate": plate,
             "Metadata_Site": site,
-            "Metadata_Well": well,
-            "Metadata_Well_Value": well,
+            "Metadata_Well": well
         }
 
         # Predict Pipeline 6 outputs for each cycle/channel
@@ -331,8 +328,7 @@ def pipeline9(samplesheet_df, base_path=None, tiles_per_well=None):
             data = {
                 "Metadata_Plate": plate,
                 "Metadata_Site": tile,  # Tile number as site
-                "Metadata_Well": well,
-                "Metadata_Well_Value": well,
+                "Metadata_Well": well
             }
 
             # Barcoding channels from all cycles

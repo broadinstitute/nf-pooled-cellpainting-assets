@@ -243,7 +243,6 @@ column_list = [
     "Metadata_Plate",
     "Metadata_Site",
     "Metadata_Well",
-    "Metadata_Well_Value",
     "Barcode_BarcodeCalled",
     "Barcode_MatchedTo_Barcode",
     "Barcode_MatchedTo_GeneCode",
@@ -274,11 +273,11 @@ df_foci.head()
 
 # %%
 # useful dataframe manipulations
-df_foci.sort_values(by=["Metadata_Well_Value", "Metadata_Site"], inplace=True)
+df_foci.sort_values(by=["Metadata_Well", "Metadata_Site"], inplace=True)
 df_foci["well-site"] = (
     df_foci["Metadata_Well"] + "-" + df_foci["Metadata_Site"].astype(str)
 )
-df_foci_well_groups = df_foci.groupby("Metadata_Well_Value")
+df_foci_well_groups = df_foci.groupby("Metadata_Well")
 
 print(
     sum(df_foci["Barcode_MatchedTo_Score"] == 1)
@@ -297,7 +296,7 @@ plt.show()
 
 # %%
 sns_displot = sns.displot(
-    df_foci, x="Barcode_MatchedTo_Score", col="Metadata_Well_Value", col_wrap=3
+    df_foci, x="Barcode_MatchedTo_Score", col="Metadata_Well", col_wrap=3
 )
 plt.tight_layout()
 plt.savefig(

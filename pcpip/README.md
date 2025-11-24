@@ -481,7 +481,7 @@ To verify local pipeline outputs match the reference outputs on S3:
 
 Consequently, **perfect reproducibility is not currently possible** for stitched images (steps 4/8), cropped tiles, or Pipeline 9 analysis outputs. The root cause is unclear but may involve floating-point computation order or iterative optimization in the stitching algorithm. CellProfiler steps (1-3, 5-7) remain deterministic and should match exactly.
 
-**Note on LZW Compression**: If `crop_preprocess.py` was used, input images will show MD5 differences due to non-deterministic LZW compression encoding, but pixel data remains identical with no impact on pipeline outputs.
+**Note on Cropped Images**: If `crop_preprocess.py` was used, input images will show MD5 differences due to new UUID generation in OME-XML metadata during file rewriting. However, pixel data and LZW-compressed image data remain byte-for-byte identical with no impact on pipeline outputs.
 
 ```bash
 # Set your fixture

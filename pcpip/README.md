@@ -25,10 +25,12 @@ Each container is called with `PIPELINE_STEP` to specify what to run.
 
 Multiple test datasets are available in S3. Choose the fixture that matches your testing needs:
 
-| Fixture | Description | S3 Path |
-|---------|-------------|---------|
-| **fix-s1** | 3 wells (A1, A2, B1) × 4 sites each | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/` |
-| **fix-l1** | 1 well (A1) × 1025 sites (full well) | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-l1/` |
+| Fixture | Description | Size | S3 Path |
+|---------|-------------|------|---------|
+| **fix-s1** | 3 wells (A1, A2, B1) × 4 sites each | ~37MB | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-s1/` |
+| **fix-l1** | 1 well (A1) × 1025 sites (full well) | ~3GB | `s3://nf-pooled-cellpainting-sandbox/data/test-data/fix-l1/` |
+
+**Fixture provenance**: These fixtures are created from production microscopy data using the [fixture creation scripts](https://github.com/broadinstitute/starrynight/tree/main/starrynight/tests/fixtures/integration/utils) in the starrynight repository. Images are compressed with **80% JPEG quality** (via ImageMagick) to reduce storage size while preserving image fidelity for pipeline testing. This compression is applied at fixture creation time and requires no special parameters during pipeline processing.
 
 **To use a different fixture**: Replace the fixture name in step 2 below.
 
